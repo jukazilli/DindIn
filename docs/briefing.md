@@ -141,6 +141,12 @@ Preferir:
 - Você está guardando
 - Restam X meses
 
+### 5.7 Orientar sem julgar
+
+O DindIn deve apresentar dados com honestidade, porém sem culpa, ameaça ou constrangimento.
+
+O sistema deve explicar a consequência e oferecer caminhos possíveis. A decisão final continua sendo do usuário.
+
 ---
 
 ## 6. Estrutura conceitual do dinheiro
@@ -400,7 +406,47 @@ O produto deve contemplar, em sua primeira definição funcional:
 
 ---
 
-## 14. Fora desta etapa documental
+## 14. Direção de marca e experiência
+
+O DindIn deve possuir personalidade visual própria e reconhecível.
+
+A marca aprovada combina:
+
+- **roxo intenso** para personalidade, ações principais e momentos protagonistas;
+- **lilás** para acolhimento e superfícies de apoio;
+- **amarelo ouro** para energia, destaques e pequenas conquistas;
+- **branco e neutros claros** para preservar análise e legibilidade;
+- **Bricolage Grotesque** para identidade, títulos e mensagens expressivas;
+- **Manrope** para interface, números, formulários e conteúdos densos.
+
+A personalidade deve ser:
+
+- otimista, mas responsável;
+- colorida, mas organizada;
+- divertida, mas adulta;
+- expressiva, mas funcional;
+- educativa, mas não professoral;
+- amigável, mas não infantil.
+
+### Princípio de expressão
+
+> **As áreas de análise são calmas. Os momentos de comportamento são expressivos.**
+
+Exemplo:
+
+Uma tabela com dezenas de movimentações deve permanecer limpa e funcional. Já o término de uma parcela pode receber mais personalidade:
+
+> **Mais espaço no seu mês. ✦**
+>
+> A geladeira terminou e liberou R$ 190 mensais.
+
+A mensagem amigável nunca substitui o dado objetivo.
+
+A especificação visual completa está em [Design UI/UX](design-ui-ux.md).
+
+---
+
+## 15. Fora desta etapa documental
 
 Ainda não serão definidos nesta fase:
 
@@ -418,7 +464,7 @@ Esses tópicos serão tratados após a validação do briefing e da direção de
 
 ---
 
-## 15. Critério de sucesso do produto
+## 16. Critério de sucesso do produto
 
 O DindIn será bem-sucedido se conseguir mudar a pergunta mental do usuário de:
 
@@ -435,3 +481,23 @@ E, com o tempo, de:
 para:
 
 > “Vou decidir primeiro quanto guardar e depois quanto posso gastar.”
+
+O sucesso também significa que o usuário consiga consultar sua situação financeira sem evitar o aplicativo por vergonha, culpa ou excesso de complexidade.
+
+---
+
+## 17. Status desta documentação
+
+**Status: APROVADO**
+
+O briefing funcional e a direção de UI/UX estão aprovados como base para a próxima etapa de produto.
+
+A próxima fase de design deve evoluir para:
+
+1. mapa de navegação;
+2. user flows;
+3. wireframes low-fidelity;
+4. design system;
+5. telas high-fidelity.
+
+Arquitetura e implementação permanecem fora do escopo desta fase.
