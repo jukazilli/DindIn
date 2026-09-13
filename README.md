@@ -18,6 +18,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [Design System](docs/design-system.md)
 - [Telas High-Fidelity](docs/high-fidelity-screens.md)
 - [Engenharia, Arquitetura e Infraestrutura](docs/architecture-engineering-infrastructure.md)
+- [Registro de Decisões de Arquitetura](docs/architecture-decisions.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -55,12 +56,18 @@ Concluído na definição de produto/design:
 
 Em andamento:
 
-- **Telas High-Fidelity**;
-- **planejamento técnico de Engenharia, Arquitetura e Infraestrutura**.
+- **Telas High-Fidelity**.
 
-### Arquitetura técnica recomendada
+Concluído na fundação técnica:
 
-A proposta atual utiliza:
+- arquitetura recomendada;
+- engenharia e infraestrutura base;
+- seleção inicial de tecnologias;
+- registro formal das decisões arquiteturais aceitas.
+
+### Arquitetura técnica aprovada como baseline
+
+A baseline atual utiliza:
 
 - TypeScript end-to-end;
 - monorepo com pnpm + Turborepo;
@@ -74,11 +81,40 @@ A proposta atual utiliza:
 - Cloudflare R2 para objetos/backups;
 - Vercel apenas durante o piloto pessoal/não comercial do Web;
 - Expo EAS para builds mobile;
-- PostHog e Sentry para observabilidade.
+- TanStack Query para estado remoto;
+- React Hook Form + Zod para formulários;
+- PostHog para analytics com minimização de dados;
+- Sentry para erros/crashes;
+- GitHub Actions para CI/CD.
 
 Princípio de arquitetura:
 
 > **Começar simples como um monólito modular, mas com fronteiras suficientes para crescer sem reescrever o produto.**
+
+Princípio de infraestrutura:
+
+> **Free-first, não free-forever.**
+
+O piloto deve priorizar serviços gratuitos e escaláveis, mas limites e termos comerciais serão revalidados no momento do provisionamento. A arquitetura não deve depender de gratuidade permanente.
+
+### Decisões técnicas formalizadas
+
+O registro de decisões documenta, entre outros pontos:
+
+- monólito modular;
+- monorepo;
+- API central como autoridade do domínio;
+- PostgreSQL/Neon;
+- Hono + Cloudflare Workers;
+- Expo para Mobile;
+- portabilidade entre provedores;
+- dinheiro em unidades menores inteiras;
+- UTC + timezone do usuário;
+- idempotência e preparação para offline parcial;
+- analytics sem dados financeiros sensíveis;
+- backup independente do provedor;
+- desenvolvimento por vertical slices;
+- escala por evidência, sem microserviços prematuros.
 
 ### Design System definido
 
@@ -118,16 +154,22 @@ O sistema documenta:
 
 ## Próxima etapa técnica
 
-Antes de iniciar implementação de features, a fundação deve seguir esta sequência:
+A próxima etapa é **Modelagem de Dados e Contratos do Domínio**.
 
-1. monorepo e tooling;
-2. domínio e contratos;
-3. banco e migrations;
-4. autenticação;
-5. API;
-6. primeiro vertical slice completo;
-7. CI/CD e observabilidade;
-8. backup e recuperação.
+Ela deve definir, antes da implementação:
+
+1. entidades e value objects;
+2. relações e cardinalidades;
+3. invariantes financeiras;
+4. estados e ciclos de vida;
+5. eventos de domínio;
+6. regras de cálculo;
+7. schema lógico/físico inicial;
+8. índices e constraints;
+9. contratos iniciais da API;
+10. estratégia de migrations e seeds.
+
+Somente depois dessa modelagem a fundação de código deve avançar para banco e domínio.
 
 A implementação deverá ocorrer por **vertical slices**, evitando construir banco, API e frontends como projetos isolados.
 
