@@ -15,6 +15,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [Mapa de Navegação e Arquitetura de Informação](docs/navigation-map.md)
 - [User Flows](docs/user-flows.md)
 - [Wireframes Low-Fidelity](docs/wireframes-low-fidelity.md)
+- [Design System](docs/design-system.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -47,28 +48,48 @@ Concluído nesta fase:
 - moodboard oficial;
 - mapa de navegação e arquitetura de informação;
 - user flows principais;
-- wireframes low-fidelity das telas e fluxos prioritários.
+- wireframes low-fidelity das telas e fluxos prioritários;
+- Design System oficial.
 
-Próxima etapa de design:
+### Design System definido
 
-1. **Design System**;
-2. telas high-fidelity;
-3. validação visual e comportamental.
+O sistema documenta:
 
-Os wireframes atuais cobrem:
+- tokens de cor;
+- tipografia;
+- espaçamento;
+- grids e breakpoints;
+- border radius e elevação;
+- iconografia;
+- botões e controles;
+- cards e KPIs;
+- orçamentos e barras de progresso;
+- movimentações e tabelas;
+- navegação desktop/tablet/mobile;
+- drawers, modais e bottom sheets;
+- feedbacks e estados;
+- gráficos;
+- motion;
+- acessibilidade;
+- microcopy;
+- convenção de tokens para futura implementação.
 
-1. Visão geral — desktop/tablet;
-2. Montar meu mês — desktop/tablet;
-3. Orçamentos — desktop/tablet;
-4. Home — mobile;
-5. Registrar despesa — mobile;
-6. ação rápida central — mobile;
+## Próxima etapa de design
+
+**Telas High-Fidelity**, nesta ordem inicial:
+
+1. Dashboard desktop;
+2. Dashboard tablet;
+3. Montar meu mês;
+4. Orçamentos;
+5. Home mobile;
+6. Registrar despesa;
 7. Quero comprar;
 8. análise de compra;
-9. compromissos/parcelas;
-10. fechamento mensal;
-11. Coisas que estão faltando;
-12. Objetivos.
+9. Parcelas;
+10. Fechamento mensal.
+
+Antes da implementação, as telas high-fidelity devem validar o Design System em situações reais de uso.
 
 Ainda não fazem parte desta etapa:
 
