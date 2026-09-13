@@ -17,6 +17,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [Wireframes Low-Fidelity](docs/wireframes-low-fidelity.md)
 - [Design System](docs/design-system.md)
 - [Telas High-Fidelity](docs/high-fidelity-screens.md)
+- [Engenharia, Arquitetura e Infraestrutura](docs/architecture-engineering-infrastructure.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -42,23 +43,42 @@ Princípio visual:
 
 ## Status
 
-Concluído nesta fase:
+Concluído na definição de produto/design:
 
 - briefing do produto;
 - direção de UI/UX;
 - moodboard oficial;
 - mapa de navegação e arquitetura de informação;
 - user flows principais;
-- wireframes low-fidelity das telas e fluxos prioritários;
+- wireframes low-fidelity;
 - Design System oficial.
 
 Em andamento:
 
-- **Telas High-Fidelity**.
+- **Telas High-Fidelity**;
+- **planejamento técnico de Engenharia, Arquitetura e Infraestrutura**.
 
-Primeira tela em produção:
+### Arquitetura técnica recomendada
 
-- **HF-01 — Dashboard Desktop**.
+A proposta atual utiliza:
+
+- TypeScript end-to-end;
+- monorepo com pnpm + Turborepo;
+- Next.js para Web;
+- React Native + Expo para Mobile;
+- Hono para API;
+- PostgreSQL no Neon;
+- Drizzle ORM;
+- Neon Auth atrás de uma abstração interna;
+- Cloudflare Workers para API;
+- Cloudflare R2 para objetos/backups;
+- Vercel apenas durante o piloto pessoal/não comercial do Web;
+- Expo EAS para builds mobile;
+- PostHog e Sentry para observabilidade.
+
+Princípio de arquitetura:
+
+> **Começar simples como um monólito modular, mas com fronteiras suficientes para crescer sem reescrever o produto.**
 
 ### Design System definido
 
@@ -96,12 +116,25 @@ O sistema documenta:
 9. Parcelas;
 10. Fechamento mensal.
 
-Antes da implementação, as telas high-fidelity devem validar o Design System em situações reais de uso.
+## Próxima etapa técnica
 
-Ainda não fazem parte desta etapa:
+Antes de iniciar implementação de features, a fundação deve seguir esta sequência:
 
-- arquitetura de software;
-- modelagem de banco;
-- backlog técnico;
-- integrações bancárias/Open Finance;
-- implementação.
+1. monorepo e tooling;
+2. domínio e contratos;
+3. banco e migrations;
+4. autenticação;
+5. API;
+6. primeiro vertical slice completo;
+7. CI/CD e observabilidade;
+8. backup e recuperação.
+
+A implementação deverá ocorrer por **vertical slices**, evitando construir banco, API e frontends como projetos isolados.
+
+Ainda permanecem fora do primeiro marco:
+
+- Open Finance;
+- integrações bancárias automáticas;
+- microserviços;
+- infraestrutura Kubernetes;
+- monetização.
