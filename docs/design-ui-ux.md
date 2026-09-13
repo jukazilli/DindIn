@@ -53,7 +53,7 @@ O moodboard aprovado define uma direção visual:
 
 Moodboard oficial:
 
-![Moodboard DindIn](assets/moodboard-dindin.png)
+![Moodboard DindIn](assets/moodboard-dindin.jpg)
 
 ---
 
