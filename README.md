@@ -16,6 +16,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [User Flows](docs/user-flows.md)
 - [Wireframes Low-Fidelity](docs/wireframes-low-fidelity.md)
 - [Design System](docs/design-system.md)
+- [Telas High-Fidelity](docs/high-fidelity-screens.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -51,6 +52,14 @@ Concluído nesta fase:
 - wireframes low-fidelity das telas e fluxos prioritários;
 - Design System oficial.
 
+Em andamento:
+
+- **Telas High-Fidelity**.
+
+Primeira tela em produção:
+
+- **HF-01 — Dashboard Desktop**.
+
 ### Design System definido
 
 O sistema documenta:
@@ -74,9 +83,7 @@ O sistema documenta:
 - microcopy;
 - convenção de tokens para futura implementação.
 
-## Próxima etapa de design
-
-**Telas High-Fidelity**, nesta ordem inicial:
+## Ordem das telas High-Fidelity
 
 1. Dashboard desktop;
 2. Dashboard tablet;
