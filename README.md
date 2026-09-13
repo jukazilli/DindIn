@@ -19,6 +19,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [Telas High-Fidelity](docs/high-fidelity-screens.md)
 - [Engenharia, Arquitetura e Infraestrutura](docs/architecture-engineering-infrastructure.md)
 - [Registro de Decisões de Arquitetura](docs/architecture-decisions.md)
+- [Modelagem de Dados e Contratos do Domínio](docs/data-model-domain-contracts.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -65,6 +66,10 @@ Concluído na fundação técnica:
 - seleção inicial de tecnologias;
 - registro formal das decisões arquiteturais aceitas.
 
+Em validação técnica:
+
+- **modelagem de dados e contratos do domínio**.
+
 ### Arquitetura técnica aprovada como baseline
 
 A baseline atual utiliza:
@@ -97,79 +102,50 @@ Princípio de infraestrutura:
 
 O piloto deve priorizar serviços gratuitos e escaláveis, mas limites e termos comerciais serão revalidados no momento do provisionamento. A arquitetura não deve depender de gratuidade permanente.
 
-### Decisões técnicas formalizadas
+### Modelagem proposta
 
-O registro de decisões documenta, entre outros pontos:
+A modelagem separa explicitamente:
 
-- monólito modular;
-- monorepo;
-- API central como autoridade do domínio;
-- PostgreSQL/Neon;
-- Hono + Cloudflare Workers;
-- Expo para Mobile;
-- portabilidade entre provedores;
-- dinheiro em unidades menores inteiras;
-- UTC + timezone do usuário;
-- idempotência e preparação para offline parcial;
-- analytics sem dados financeiros sensíveis;
-- backup independente do provedor;
-- desenvolvimento por vertical slices;
-- escala por evidência, sem microserviços prematuros.
+- dinheiro real movimentado;
+- dinheiro planejado;
+- compromissos futuros.
 
-### Design System definido
+Principais entidades propostas:
 
-O sistema documenta:
+- perfil;
+- contas financeiras;
+- categorias;
+- transações;
+- planejamento mensal;
+- definições e períodos de orçamento;
+- compromissos recorrentes;
+- planos de parcelamento e parcelas;
+- objetivos e contribuições;
+- intenções de compra e análises;
+- itens de necessidade;
+- fechamentos mensais;
+- auditoria, idempotência e outbox.
 
-- tokens de cor;
-- tipografia;
-- espaçamento;
-- grids e breakpoints;
-- border radius e elevação;
-- iconografia;
-- botões e controles;
-- cards e KPIs;
-- orçamentos e barras de progresso;
-- movimentações e tabelas;
-- navegação desktop/tablet/mobile;
-- drawers, modais e bottom sheets;
-- feedbacks e estados;
-- gráficos;
-- motion;
-- acessibilidade;
-- microcopy;
-- convenção de tokens para futura implementação.
+Regra de modelagem:
 
-## Ordem das telas High-Fidelity
+> **Persistir fatos e decisões; calcular projeções e indicadores a partir deles.**
 
-1. Dashboard desktop;
-2. Dashboard tablet;
-3. Montar meu mês;
-4. Orçamentos;
-5. Home mobile;
-6. Registrar despesa;
-7. Quero comprar;
-8. análise de compra;
-9. Parcelas;
-10. Fechamento mensal.
+`Disponível para gastar`, orçamento restante, comprometimento futuro e progresso de objetivos são valores derivados e não campos editáveis.
 
 ## Próxima etapa técnica
 
-A próxima etapa é **Modelagem de Dados e Contratos do Domínio**.
+Antes de gerar Drizzle ou migrations, validar a proposta de modelagem e seus invariantes.
 
-Ela deve definir, antes da implementação:
+Depois da aprovação:
 
-1. entidades e value objects;
-2. relações e cardinalidades;
-3. invariantes financeiras;
-4. estados e ciclos de vida;
-5. eventos de domínio;
-6. regras de cálculo;
-7. schema lógico/físico inicial;
-8. índices e constraints;
-9. contratos iniciais da API;
-10. estratégia de migrations e seeds.
-
-Somente depois dessa modelagem a fundação de código deve avançar para banco e domínio.
+1. converter entidades em schemas Drizzle;
+2. fechar constraints e índices;
+3. criar migrations M001–M007;
+4. criar schemas Zod;
+5. definir contratos OpenAPI;
+6. criar fixtures do caso piloto;
+7. criar testes das invariantes financeiras;
+8. implementar o primeiro vertical slice.
 
 A implementação deverá ocorrer por **vertical slices**, evitando construir banco, API e frontends como projetos isolados.
 
