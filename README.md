@@ -12,6 +12,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 
 - [Briefing do Produto](docs/briefing.md)
 - [Design UI/UX](docs/design-ui-ux.md)
+- [Mapa de Navegação e Arquitetura de Informação](docs/navigation-map.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -37,15 +38,19 @@ Princípio visual:
 
 ## Status
 
-Fase atual: **Briefing + definição de Design UI/UX aprovados**.
+Concluído nesta fase:
+
+- briefing do produto;
+- direção de UI/UX;
+- moodboard oficial;
+- mapa de navegação e arquitetura de informação.
 
 Próxima etapa de design:
 
-1. mapa de navegação;
-2. user flows;
-3. wireframes low-fidelity;
-4. design system;
-5. telas high-fidelity.
+1. **User Flows**;
+2. wireframes low-fidelity;
+3. design system;
+4. telas high-fidelity.
 
 Ainda não fazem parte desta etapa:
 
