@@ -8,7 +8,7 @@ O projeto usa um caso real como piloto: uma pessoa que recebe salário mensal, p
 
 - [Briefing do Produto](docs/briefing.md)
 - [Design UI/UX](docs/design-ui-ux.md)
-- [Moodboard aprovado](docs/assets/moodboard-dindin.png)
+- [Moodboard aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Status
 
