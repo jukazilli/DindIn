@@ -13,6 +13,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [Briefing do Produto](docs/briefing.md)
 - [Design UI/UX](docs/design-ui-ux.md)
 - [Mapa de Navegação e Arquitetura de Informação](docs/navigation-map.md)
+- [User Flows](docs/user-flows.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -43,14 +44,27 @@ Concluído nesta fase:
 - briefing do produto;
 - direção de UI/UX;
 - moodboard oficial;
-- mapa de navegação e arquitetura de informação.
+- mapa de navegação e arquitetura de informação;
+- user flows principais.
 
 Próxima etapa de design:
 
-1. **User Flows**;
-2. wireframes low-fidelity;
-3. design system;
-4. telas high-fidelity.
+1. **wireframes low-fidelity**;
+2. design system;
+3. telas high-fidelity.
+
+Os primeiros wireframes devem priorizar:
+
+1. Visão geral — desktop/tablet;
+2. Montar meu mês — desktop/tablet;
+3. Orçamentos — desktop/tablet;
+4. Registrar despesa — mobile;
+5. Home — mobile;
+6. Quero comprar — mobile;
+7. análise de compra;
+8. compromissos/parcelas;
+9. fechamento mensal;
+10. parcela encerrada e redistribuição do valor liberado.
 
 Ainda não fazem parte desta etapa:
 
