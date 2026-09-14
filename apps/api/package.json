@@ -20,7 +20,8 @@
     "@dindin/db": "workspace:*",
     "@dindin/domain": "workspace:*",
     "drizzle-orm": "latest",
-    "hono": "latest"
+    "hono": "latest",
+    "jose": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
