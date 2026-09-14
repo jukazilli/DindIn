@@ -10,8 +10,10 @@ import {
 } from "@dindin/contracts";
 import { DomainInvariantError } from "@dindin/domain";
 import { Hono, type Context } from "hono";
+import { PilotHeaderIdentityProvider } from "../adapters/pilot-header-identity-provider";
 import { DindinService } from "../application/dindin-service";
 import { ApplicationError } from "../application/errors";
+import type { IdentityProvider } from "../ports/identity-provider";
 import type { DindinStore } from "../ports/store";
 import { openApiDocument } from "./openapi";
 
@@ -23,16 +25,13 @@ type SafeParseSchema<T> = {
   safeParse(value: unknown): SafeParseResult<T>;
 };
 
-const requireUserId = (c: Context): string => {
-  const parsed = UuidSchema.safeParse(c.req.header("x-dindin-user-id"));
-  if (!parsed.success) {
-    throw new ApplicationError(
-      "UNAUTHORIZED",
-      "x-dindin-user-id must contain a valid user UUID during the pilot",
-    );
+async function requireUserId(c: Context, identityProvider: IdentityProvider): Promise<string> {
+  const identity = await identityProvider.resolve(c.req.raw);
+  if (!identity) {
+    throw new ApplicationError("UNAUTHORIZED", "authentication is required");
   }
-  return parsed.data;
-};
+  return identity.userId;
+}
 
 async function parseJson<T>(c: Context, schema: SafeParseSchema<T>): Promise<T> {
   let body: unknown;
@@ -79,7 +78,10 @@ const toErrorResponse = (
   },
 });
 
-export function createApiApp(store: DindinStore) {
+export function createApiApp(
+  store: DindinStore,
+  identityProvider: IdentityProvider = new PilotHeaderIdentityProvider(),
+) {
   const service = new DindinService(store);
   const app = new Hono();
 
@@ -111,50 +113,58 @@ export function createApiApp(store: DindinStore) {
   app.get("/openapi.json", (c) => c.json(openApiDocument, 200));
 
   app.post("/v1/profile", async (c) => {
+    const userId = await requireUserId(c, identityProvider);
     const input = await parseJson(c, CreateProfileSchema);
-    const result = await service.createProfile(requireUserId(c), input);
+    const result = await service.createProfile(userId, input);
     return c.json(result, 201);
   });
 
   app.post("/v1/accounts", async (c) => {
+    const userId = await requireUserId(c, identityProvider);
     const input = await parseJson(c, CreateFinancialAccountSchema);
-    const result = await service.createFinancialAccount(requireUserId(c), input);
+    const result = await service.createFinancialAccount(userId, input);
     return c.json(result, 201);
   });
 
   app.post("/v1/categories", async (c) => {
+    const userId = await requireUserId(c, identityProvider);
     const input = await parseJson(c, CreateCategorySchema);
-    const result = await service.createCategory(requireUserId(c), input);
+    const result = await service.createCategory(userId, input);
     return c.json(result, 201);
   });
 
   app.post("/v1/monthly-plans", async (c) => {
+    const userId = await requireUserId(c, identityProvider);
     const input = await parseJson(c, CreateMonthlyPlanSchema);
-    const result = await service.createMonthlyPlan(requireUserId(c), input);
+    const result = await service.createMonthlyPlan(userId, input);
     return c.json(result, 201);
   });
 
   app.post("/v1/budget-definitions", async (c) => {
+    const userId = await requireUserId(c, identityProvider);
     const input = await parseJson(c, CreateBudgetDefinitionSchema);
-    const result = await service.createBudgetDefinition(requireUserId(c), input);
+    const result = await service.createBudgetDefinition(userId, input);
     return c.json(result, 201);
   });
 
   app.post("/v1/budget-periods", async (c) => {
+    const userId = await requireUserId(c, identityProvider);
     const input = await parseJson(c, CreateBudgetPeriodSchema);
-    const result = await service.createBudgetPeriod(requireUserId(c), input);
+    const result = await service.createBudgetPeriod(userId, input);
     return c.json(result, 201);
   });
 
   app.post("/v1/transactions", async (c) => {
+    const userId = await requireUserId(c, identityProvider);
     const input = await parseJson(c, CreateTransactionSchema);
-    const result = await service.createTransaction(requireUserId(c), input);
+    const result = await service.createTransaction(userId, input);
     return c.json(result, 201);
   });
 
   app.get("/v1/monthly-plans/:monthlyPlanId/available-to-spend", async (c) => {
+    const userId = await requireUserId(c, identityProvider);
     const monthlyPlanId = parseUuidParam(c.req.param("monthlyPlanId"));
-    const result = await service.getAvailableToSpend(requireUserId(c), monthlyPlanId);
+    const result = await service.getAvailableToSpend(userId, monthlyPlanId);
     return c.json(result, 200);
   });
 
