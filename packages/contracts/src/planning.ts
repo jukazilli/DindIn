@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { UuidSchema } from "./core";
-import { CurrencyCodeSchema, MoneyMinorSchema, PositiveMoneyMinorSchema } from "./money";
+import {
+  CurrencyCodeSchema,
+  MoneyMinorSchema,
+  PositiveMoneyMinorSchema,
+  SignedMoneyMinorSchema,
+} from "./money";
 
 export const MonthlyPlanStatusSchema = z.enum(["draft", "active", "closed"]);
 export const FundingStateSchema = z.enum(["projected", "reconciled"]);
@@ -46,30 +51,47 @@ export const CreateBudgetPeriodSchema = z.object({
   carriedInMinor: MoneyMinorSchema.default("0"),
 });
 
-export const ReallocateBudgetSchema = z.object({
-  id: UuidSchema.optional(),
-  monthlyPlanId: UuidSchema,
-  fromBudgetPeriodId: UuidSchema,
-  toBudgetPeriodId: UuidSchema,
-  amountMinor: PositiveMoneyMinorSchema,
-  reason: z.string().trim().max(240).nullable().optional(),
-  expectedSourceVersion: z.number().int().min(1),
-  expectedTargetVersion: z.number().int().min(1),
-}).refine((value) => value.fromBudgetPeriodId !== value.toBudgetPeriodId, {
-  message: "source and target budget periods must be different",
-  path: ["toBudgetPeriodId"],
+export const ReallocateBudgetSchema = z
+  .object({
+    id: UuidSchema.optional(),
+    monthlyPlanId: UuidSchema,
+    fromBudgetPeriodId: UuidSchema,
+    toBudgetPeriodId: UuidSchema,
+    amountMinor: PositiveMoneyMinorSchema,
+    reason: z.string().trim().max(240).nullable().optional(),
+    expectedSourceVersion: z.number().int().min(1),
+    expectedTargetVersion: z.number().int().min(1),
+  })
+  .refine((value) => value.fromBudgetPeriodId !== value.toBudgetPeriodId, {
+    message: "source and target budget periods must be different",
+    path: ["toBudgetPeriodId"],
+  });
+
+export const AvailableToSpendBudgetSchema = z.object({
+  id: z.string().min(1),
+  spendability: SpendabilitySchema,
+  capacityMinor: MoneyMinorSchema,
+  postedExpenseMinor: MoneyMinorSchema,
+  remainingMinor: SignedMoneyMinorSchema,
 });
 
 export const AvailableToSpendBreakdownSchema = z.object({
   monthlyPlanId: UuidSchema,
   currency: CurrencyCodeSchema,
   fundingState: FundingStateSchema,
-  availableToSpendMinor: z.string().regex(/^-?\d+$/),
+  effectiveIncomeMinor: MoneyMinorSchema,
+  carryInTotalMinor: MoneyMinorSchema,
   effectiveFundsMinor: MoneyMinorSchema,
+  totalAllocatedMinor: MoneyMinorSchema,
   postedExpensesMinor: MoneyMinorSchema,
   protectedRemainingMinor: MoneyMinorSchema,
   unfundedCommitmentsMinor: MoneyMinorSchema,
+  unassignedMinor: SignedMoneyMinorSchema,
   unassignedPositiveMinor: MoneyMinorSchema,
+  planningConflictMinor: MoneyMinorSchema,
+  hasPlanningConflict: z.boolean(),
+  availableToSpendMinor: SignedMoneyMinorSchema,
+  budgets: z.array(AvailableToSpendBudgetSchema),
   calculatedAt: z.string().datetime(),
 });
 
