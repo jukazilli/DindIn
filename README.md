@@ -57,7 +57,7 @@ Concluído na definição de produto/design:
 - wireframes low-fidelity;
 - Design System oficial.
 
-Em andamento:
+Em andamento no design:
 
 - **Telas High-Fidelity**.
 
@@ -70,13 +70,66 @@ Concluído na fundação técnica:
 - modelo canônico de `Disponível para gastar`;
 - schema lógico de dados, constraints e índices.
 
-Em validação final antes das migrations:
+## Implementação técnica iniciada
 
-- **contratos de domínio/API e tradução do schema lógico para Drizzle**.
+A implementação começou pelo primeiro vertical slice, sem antecipar features maiores.
+
+Estrutura inicial criada:
+
+```text
+packages/
+  db/
+    src/schema/
+    migrations/
+  contracts/
+    src/
+```
+
+Já estão traduzidos para código:
+
+- schema Drizzle de perfil;
+- contas financeiras;
+- categorias;
+- transações;
+- planejamento mensal;
+- definições de orçamento;
+- períodos de orçamento;
+- realocações auditáveis;
+- factory de conexão Neon + Drizzle;
+- contratos Zod de dinheiro, perfil, contas, categorias, planejamento, orçamentos e transações.
+
+Migrations iniciais criadas:
+
+```text
+M001 — identity and core
+M002 — transactions
+M003 — planning and budgets
+```
+
+Os valores monetários atravessam contratos JSON como **strings inteiras em centavos** e são convertidos para `bigint` dentro da fronteira de domínio/banco.
+
+Exemplo:
+
+```text
+R$ 512,34 → "51234" → bigint(51234)
+```
+
+### Validação obrigatória antes do primeiro deploy
+
+Esta baseline foi criada antes de um ambiente local com as dependências do projeto instaladas. Portanto, antes de aplicar as migrations em qualquer ambiente compartilhado é obrigatório:
+
+1. executar `pnpm install`;
+2. executar typecheck dos packages;
+3. validar o schema com Drizzle Kit;
+4. aplicar `M001–M003` em um banco Neon de desenvolvimento vazio;
+5. confirmar os snapshots/metadata do Drizzle;
+6. executar testes das invariantes financeiras.
+
+Nenhuma migration deve ser aplicada diretamente em produção sem esse ciclo.
 
 ### Arquitetura técnica aprovada como baseline
 
-A baseline atual utiliza:
+A baseline utiliza:
 
 - TypeScript end-to-end;
 - monorepo com pnpm + Turborepo;
@@ -104,8 +157,6 @@ Princípio de infraestrutura:
 
 > **Free-first, não free-forever.**
 
-O piloto deve priorizar serviços gratuitos e escaláveis, mas limites e termos comerciais serão revalidados no momento do provisionamento. A arquitetura não deve depender de gratuidade permanente.
-
 ### Modelagem consolidada
 
 A modelagem separa explicitamente:
@@ -120,23 +171,11 @@ Regra de modelagem:
 
 `Disponível para gastar`, orçamento restante, comprometimento futuro e progresso de objetivos são valores derivados e não campos editáveis.
 
-O schema lógico já define, entre outros pontos:
-
-- `monthly_plans` com renda `projected` ou `reconciled`;
-- `budget_definitions` e `budget_periods` separados;
-- `budget_reallocations` auditáveis no lugar de ajustes opacos;
-- `budget_commitment_allocations` para cobertura explícita de obrigações;
-- transações anuláveis, não apagadas silenciosamente;
-- parcelamentos com plano e parcelas individualizadas;
-- fechamento mensal versionado;
-- idempotência, auditoria e outbox;
-- constraints e índices iniciais orientados aos padrões reais de consulta.
-
 ### Disponível para gastar
 
 O DindIn adotará um único cálculo canônico. Ele representa quanto ainda pode ser consumido sem invadir dinheiro protegido nem ignorar compromissos conhecidos.
 
-Princípios já fechados:
+Princípios fechados:
 
 - saldo bancário não é disponibilidade;
 - limite de cartão não aumenta disponibilidade;
@@ -150,17 +189,14 @@ Princípios já fechados:
 
 ## Próxima etapa técnica
 
-O próximo passo é transformar a baseline lógica em **contratos implementáveis**, sem ainda tentar desenvolver o produto inteiro.
+Com Drizzle, `M001–M003` e os contratos Zod iniciais criados, o próximo bloco é:
 
-Sequência recomendada:
-
-1. converter o primeiro subconjunto para schemas Drizzle;
-2. fechar migrations `M001–M003` do primeiro vertical slice;
-3. definir schemas Zod do domínio;
-4. definir contratos OpenAPI iniciais;
-5. criar fixtures do caso piloto;
-6. criar testes das invariantes financeiras;
-7. implementar o primeiro vertical slice completo.
+1. criar o package `domain` com o motor puro de `Disponível para gastar`;
+2. criar fixtures do caso piloto;
+3. criar testes unitários das invariantes financeiras;
+4. definir os primeiros contratos OpenAPI;
+5. iniciar a API Hono somente depois dos testes do domínio;
+6. montar o primeiro vertical slice ponta a ponta.
 
 Primeiro vertical slice:
 
