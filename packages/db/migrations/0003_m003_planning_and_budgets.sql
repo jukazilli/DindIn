@@ -96,20 +96,11 @@ CREATE INDEX IF NOT EXISTS budget_reallocations_plan_created_idx
 ALTER TABLE transactions
   ADD COLUMN IF NOT EXISTS budget_period_id uuid;
 
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'transactions_budget_period_id_budget_periods_id_fk'
-  ) THEN
-    ALTER TABLE transactions
-      ADD CONSTRAINT transactions_budget_period_id_budget_periods_id_fk
-      FOREIGN KEY (budget_period_id)
-      REFERENCES budget_periods(id)
-      ON DELETE RESTRICT;
-  END IF;
-END $$;
+ALTER TABLE transactions
+  ADD CONSTRAINT transactions_budget_period_id_budget_periods_id_fk
+  FOREIGN KEY (budget_period_id)
+  REFERENCES budget_periods(id)
+  ON DELETE RESTRICT;
 
 CREATE INDEX IF NOT EXISTS transactions_budget_period_idx
   ON transactions(budget_period_id);
