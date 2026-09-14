@@ -1,6 +1,6 @@
 # DindIn — Autenticação e Identidade
 
-> Status: **fronteira de autenticação implementada e Managed Better Auth provisionado no `DindIn-dev`**  
+> Status: **fronteira de autenticação implementada; Managed Better Auth provisionado e usuário técnico criado no `DindIn-dev`**  
 > Data de referência: **2026-09**
 
 ## 1. Objetivo
@@ -138,9 +138,32 @@ O provider Google listado atualmente é o provider compartilhado de desenvolvime
 
 ---
 
-## 6. Endpoints de autenticação do ambiente
+## 6. Usuário técnico de desenvolvimento
 
-O ambiente agora possui um `NEON_AUTH_BASE_URL` e um endpoint JWKS próprios da branch.
+Foi criado um usuário técnico controlado para validar o fluxo real de autenticação.
+
+Dados pessoais do usuário de teste, email e UUID de autenticação **não devem ser versionados** no repositório público.
+
+A criação administrativa gerou:
+
+```text
+neon_auth.user
+    ↓
+neon_auth.account
+provider = credential
+```
+
+Foi confirmado que a conta `credential` foi criada **sem senha definida**.
+
+Isso é intencional do ponto de vista de segurança desta validação: nenhuma senha será inventada, inserida diretamente no banco ou registrada em código/documentação.
+
+A primeira sessão deverá ser obtida por um fluxo suportado pelo Managed Better Auth, preferencialmente pelo Google OAuth compartilhado de desenvolvimento ou por um fluxo legítimo de definição/reset de senha.
+
+---
+
+## 7. Endpoints de autenticação do ambiente
+
+O ambiente possui um `NEON_AUTH_BASE_URL` e um endpoint JWKS próprios da branch.
 
 Esses valores devem entrar no runtime como variáveis de ambiente, nunca hardcoded na aplicação:
 
@@ -153,7 +176,7 @@ O JWKS é público por design; segredos de sessão, banco, OAuth ou SMTP não de
 
 ---
 
-## 7. Composition root
+## 8. Composition root
 
 ### Piloto pessoal
 
@@ -179,7 +202,7 @@ Casos de uso e domínio permanecem iguais nos dois cenários.
 
 ---
 
-## 8. OpenAPI
+## 9. OpenAPI
 
 As rotas protegidas documentam:
 
@@ -193,7 +216,7 @@ O fallback do piloto existe apenas para desenvolvimento e não representa a conf
 
 ---
 
-## 9. Regras de segurança
+## 10. Regras de segurança
 
 1. A API nunca aceita `userId` do corpo como identidade.
 2. Ownership vem exclusivamente do `IdentityProvider`.
@@ -205,10 +228,12 @@ O fallback do piloto existe apenas para desenvolvimento e não representa a conf
 8. Token inválido retorna `401` sem detalhes criptográficos.
 9. JWT de acesso não é persistido como dado de domínio.
 10. RLS pode atuar como defesa adicional, não como substituto da autorização da aplicação.
+11. Senhas nunca são gravadas manualmente em tabelas do schema `neon_auth`.
+12. Identificadores e emails de usuários de desenvolvimento não são publicados no repositório.
 
 ---
 
-## 10. Sessão Web versus JWT
+## 11. Sessão Web versus JWT
 
 No Web, a preferência continua sendo sessão/cookie seguro quando o desenho de implantação permitir.
 
@@ -222,7 +247,7 @@ Não devemos armazenar tokens manualmente no browser quando a sessão gerenciada
 
 ---
 
-## 11. Estado atual
+## 12. Estado atual
 
 Já implementado e/ou provisionado:
 
@@ -236,14 +261,19 @@ Já implementado e/ou provisionado:
 - Managed Better Auth provisionado no `DindIn-dev`;
 - schema `neon_auth` criado;
 - endpoint JWKS disponível;
-- email/senha ativo no ambiente dev.
+- email/senha ativo no ambiente dev;
+- Google OAuth compartilhado disponível para desenvolvimento;
+- usuário técnico de desenvolvimento criado;
+- conta `credential` confirmada sem senha manual.
 
 Ainda falta validar:
 
-- criação de usuário real de teste;
-- login real;
+- login real interativo;
+- criação de sessão real;
 - emissão de JWT real;
 - validação do JWT real pelo `NeonJwtIdentityProvider`;
+- chamada autenticada à DindIn API;
+- ownership no PostgreSQL usando a identidade autenticada;
 - configuração final de domínio confiável;
 - credenciais OAuth próprias;
 - política final de sessão Web;
@@ -251,17 +281,18 @@ Ainda falta validar:
 
 ---
 
-## 12. Próxima validação
+## 13. Próxima validação
 
-Próximo passo recomendado:
+Próximo fluxo:
 
 ```text
-criar usuário técnico de desenvolvimento
-→ executar login real
-→ obter sessão/JWT
-→ validar JWT contra o JWKS real
-→ chamar endpoint protegido da DindIn API
-→ confirmar ownership no PostgreSQL
+login interativo legítimo
+→ sessão Managed Better Auth
+→ emissão de JWT
+→ validação no JWKS real
+→ NeonJwtIdentityProvider
+→ endpoint protegido da DindIn API
+→ ownership confirmado no PostgreSQL
 ```
 
-A criação desse usuário deve usar um endereço de desenvolvimento controlado e não deve reutilizar credenciais pessoais ou de produção.
+Essa etapa exige uma autenticação interativa do usuário em navegador. Até lá, não devemos gerar, inventar ou persistir credenciais artificiais para contornar o fluxo real.
