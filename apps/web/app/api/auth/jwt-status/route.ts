@@ -13,9 +13,12 @@ export async function GET(request: Request) {
   const cookie = request.headers.get("cookie");
 
   try {
+    const headers = new Headers();
+    if (cookie) headers.set("cookie", cookie);
+
     const sessionResponse = await fetch(`${origin}/api/auth/get-session`, {
       method: "GET",
-      headers: cookie ? { cookie } : undefined,
+      headers,
       cache: "no-store",
       redirect: "manual",
     });
