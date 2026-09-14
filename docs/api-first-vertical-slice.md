@@ -1,6 +1,6 @@
 # DindIn — API do Primeiro Vertical Slice
 
-> Status: **implementada e validada em CI com adapter em memória + adapter Drizzle compilando**  
+> Status: **implementada; banco real validado; autenticação desacoplada por adapter**  
 > Data de referência: **2026-09**
 
 ## 1. Objetivo
@@ -29,6 +29,8 @@ A implementação atual segue esta direção:
 
 ```text
 HTTP / Hono
+    ↓
+IdentityProvider
     ↓
 Application / DindinService
     ↓
@@ -60,24 +62,33 @@ A infraestrutura real é montada somente em:
 apps/api/src/composition.ts
 ```
 
-Fluxo:
+Fluxo de desenvolvimento/piloto:
 
 ```text
 DATABASE_URL
 → createDb()
 → DrizzleDindinStore
+→ PilotHeaderIdentityProvider
 → createApiApp()
 ```
 
-Isso impede que Hono, casos de uso e domínio dependam de detalhes de conexão do Neon.
+Fluxo preparado para autenticação real:
+
+```text
+DATABASE_URL
++ NEON_AUTH_BASE_URL
+→ DrizzleDindinStore
+→ NeonJwtIdentityProvider
+→ createApiApp()
+```
+
+Isso impede que Hono, casos de uso e domínio dependam de detalhes de conexão ou de um provedor específico de autenticação.
 
 ---
 
 ## 4. Contrato monetário
 
 JSON nunca trafega dinheiro como `number` de ponto flutuante.
-
-Exemplo:
 
 ```text
 R$ 512,34
@@ -92,11 +103,7 @@ bigint(51234)
 → "51234"
 ```
 
-Adapters:
-
-```text
-apps/api/src/adapters/money.ts
-```
+Adapters monetários ficam na fronteira da API/aplicação.
 
 ---
 
@@ -128,86 +135,63 @@ O documento descreve:
 - respostas;
 - valores monetários em centavos;
 - esquema de erro;
-- autenticação temporária do piloto;
+- Bearer JWT para ambientes autenticados;
+- fallback técnico de identidade do piloto;
 - breakdown do `Disponível para gastar`.
 
 ---
 
 ## 6. Endpoints atuais
 
-### Saúde
-
 ```text
-GET /health
-```
-
-### Perfil
-
-```text
+GET  /health
+GET  /openapi.json
 POST /v1/profile
-```
-
-### Contas
-
-```text
 POST /v1/accounts
-```
-
-### Categorias
-
-```text
 POST /v1/categories
-```
-
-### Planejamento mensal
-
-```text
 POST /v1/monthly-plans
-```
-
-### Definições de orçamento
-
-```text
 POST /v1/budget-definitions
-```
-
-### Orçamento no mês
-
-```text
 POST /v1/budget-periods
-```
-
-### Movimentações
-
-```text
 POST /v1/transactions
-```
-
-### KPI canônico
-
-```text
-GET /v1/monthly-plans/{monthlyPlanId}/available-to-spend
+GET  /v1/monthly-plans/{monthlyPlanId}/available-to-spend
 ```
 
 ---
 
-## 7. Autenticação temporária do piloto
+## 7. Identidade e autenticação
 
-Durante esta etapa existe um mecanismo propositalmente temporário:
+A API não lê mais identidade diretamente como uma regra fixa das rotas.
+
+Contrato:
+
+```text
+IdentityProvider.resolve(request)
+→ { userId }
+```
+
+Implementações atuais:
+
+### PilotHeaderIdentityProvider
+
+Usado apenas em desenvolvimento/piloto pessoal:
 
 ```text
 x-dindin-user-id: <UUID>
 ```
 
-Ele serve apenas para manter ownership e autorização explícitos enquanto o adapter definitivo de autenticação ainda não foi conectado.
+> **Não é autenticação de produção.**
 
-Regra:
+### NeonJwtIdentityProvider
 
-> **O header `x-dindin-user-id` não é mecanismo de autenticação para produção.**
+Preparado para JWT emitido pelo Managed Better Auth:
 
-Antes de qualquer beta com usuários externos ele deve ser substituído por uma identidade validada pelo adapter de Auth.
+```text
+Authorization: Bearer <JWT>
+```
 
-A camada de aplicação continuará recebendo somente um `userId` confiável; a troca de autenticação não deve alterar o domínio.
+Valida assinatura via JWKS, algoritmo EdDSA, issuer, audience e identidade do usuário antes de entregar `userId` à aplicação.
+
+A arquitetura completa está registrada em `docs/authentication.md`.
 
 ---
 
@@ -239,7 +223,7 @@ Mapeamento HTTP inicial:
 
 ```text
 400 → validação / invariante de domínio
-401 → contexto de autenticação ausente ou inválido
+401 → identidade ausente ou inválida
 404 → recurso não encontrado
 409 → conflito de estado/constraint
 500 → erro inesperado
@@ -249,25 +233,19 @@ Mapeamento HTTP inicial:
 
 ## 9. DindinStore
 
-A aplicação depende da interface:
-
-```text
-DindinStore
-```
-
-Ela contém apenas as operações necessárias ao primeiro slice.
+A aplicação depende da interface `DindinStore`.
 
 Implementações atuais:
 
 ### InMemoryDindinStore
 
-Usado para testes HTTP e validação do comportamento sem banco.
+Usado nos testes HTTP rápidos, sem banco.
 
 ### DrizzleDindinStore
 
-Adapter real para os schemas já definidos em `@dindin/db`.
+Adapter real para `@dindin/db` e PostgreSQL/Neon.
 
-Responsabilidades do adapter Drizzle:
+Responsabilidades:
 
 - persistir perfil;
 - persistir conta;
@@ -282,9 +260,9 @@ O adapter não implementa a regra financeira final.
 
 ---
 
-## 10. Primeiro teste ponta a ponta sem banco
+## 10. Primeiro fluxo HTTP automatizado
 
-O teste HTTP executa:
+O teste rápido executa em memória:
 
 ```text
 criar perfil
@@ -303,14 +281,12 @@ Cenário:
 renda                         R$ 2.994
 obrigações planejadas         R$ 1.452
 consumo/livre planejado       R$ 1.542
-
 obrigações realizadas         R$ 1.452
 consumo realizado             R$ 1.030
-
 saída realizada total         R$ 2.482
 ```
 
-Resultado esperado e automatizado:
+Resultado:
 
 ```text
 Disponível para gastar = R$ 512
@@ -318,9 +294,71 @@ Disponível para gastar = R$ 512
 
 ---
 
-## 11. Validação CI
+## 11. Banco real validado
 
-A CI valida atualmente quatro packages:
+O projeto Neon de desenvolvimento é isolado dos demais produtos:
+
+```text
+DindIn-dev
+```
+
+`M001–M003` foram validadas primeiro em branch temporária e depois promovidas para a branch principal do ambiente de desenvolvimento.
+
+Foram confirmados:
+
+- tabelas;
+- foreign keys;
+- CHECK constraints;
+- UNIQUEs;
+- índices críticos;
+- caso piloto de R$ 512.
+
+Detalhes em `docs/database-validation.md`.
+
+---
+
+## 12. Teste de integração com Neon
+
+Existe um teste opt-in em:
+
+```text
+apps/api/src/integration/neon-flow.integration.test.ts
+```
+
+Ele percorre:
+
+```text
+Hono
+→ IdentityProvider do piloto
+→ DindinService
+→ DrizzleDindinStore
+→ DindIn-dev
+→ domínio
+```
+
+Proteções do teste:
+
+- exige `DINDIN_INTEGRATION_TARGET=DindIn-dev`;
+- exige `DINDIN_INTEGRATION_DATABASE_URL` fora do código;
+- gera UUIDs próprios por execução;
+- limpa somente os registros do usuário criado pelo próprio teste;
+- não imprime a connection string.
+
+A CI comum não depende de Neon e mantém esse teste `skipped` quando as variáveis não existem.
+
+Também existe workflow manual:
+
+```text
+.github/workflows/integration-neon.yml
+```
+
+que usa o secret de repositório `DINDIN_INTEGRATION_DATABASE_URL`.
+
+---
+
+## 13. Validação CI
+
+A CI comum valida:
 
 ```text
 @dindin/contracts
@@ -329,7 +367,7 @@ A CI valida atualmente quatro packages:
 @dindin/api
 ```
 
-Validações executadas:
+Comandos:
 
 ```text
 pnpm install
@@ -337,51 +375,41 @@ pnpm typecheck
 pnpm test
 ```
 
-Resultado atual:
+Estado após a fronteira de autenticação:
 
 ```text
 TypeScript: OK nos 4 packages
 Domain: 13 testes aprovados
-API: 3 testes HTTP aprovados
+API: testes HTTP aprovados
+Integração Neon: opt-in / skipped sem secret
 ```
 
-Os testes da API validam:
+Os testes HTTP verificam, entre outros pontos:
 
 1. primeiro vertical slice retornando R$ 512;
-2. publicação do documento OpenAPI;
-3. rejeição de rota protegida sem contexto de usuário.
+2. publicação do OpenAPI;
+3. rejeição sem identidade autenticada;
+4. injeção de um `IdentityProvider` sem depender de `x-dindin-user-id`.
 
 ---
 
-## 12. O que ainda não foi validado
+## 14. Próxima fronteira
 
-Apesar do adapter Drizzle compilar, ainda falta executar contra um PostgreSQL/Neon real.
+A próxima decisão externa é provisionar o **Managed Better Auth** no `DindIn-dev` e testar o adapter JWT contra um ambiente real.
 
-Antes de considerar esta camada pronta para ambiente compartilhado precisamos:
-
-1. provisionar ou selecionar um projeto Neon exclusivo do DindIn;
-2. aplicar `M001–M003` em uma branch/database de desenvolvimento vazia;
-3. executar smoke tests de inserts, FKs, CHECKs e UNIQUEs;
-4. executar o mesmo fluxo HTTP usando `DrizzleDindinStore`;
-5. comparar o resultado com o adapter em memória;
-6. validar geração/snapshots do Drizzle Kit;
-7. somente então tratar as migrations como validadas em runtime.
-
----
-
-## 13. Próxima fronteira
-
-Após a validação real de banco:
+Depois:
 
 ```text
-Auth adapter
+Managed Better Auth
+→ JWT/JWKS real
+→ teste autenticado
 → Cloudflare Worker entrypoint
 → secrets/env
 → primeiro deploy dev
 → cliente Web/Mobile consumindo a API
 ```
 
-Só depois disso devem entrar os próximos domínios:
+Só depois disso entram os próximos domínios:
 
 - recorrências;
 - parcelas;
@@ -390,4 +418,4 @@ Só depois disso devem entrar os próximos domínios:
 - necessidades;
 - fechamento mensal.
 
-A expansão deve continuar por vertical slices.
+A expansão continua por vertical slices.
