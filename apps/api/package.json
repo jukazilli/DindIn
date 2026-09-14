@@ -16,7 +16,9 @@
   },
   "dependencies": {
     "@dindin/contracts": "workspace:*",
+    "@dindin/db": "workspace:*",
     "@dindin/domain": "workspace:*",
+    "drizzle-orm": "latest",
     "hono": "latest"
   },
   "devDependencies": {
