@@ -18,7 +18,16 @@ export default function AuthDebugPage() {
 
     async function validate() {
       try {
-        const sessionResult = await authClient.getSession();
+        let sessionHeaderJwt: string | null = null;
+
+        const sessionResult = await authClient.getSession({
+          fetchOptions: {
+            onSuccess(ctx) {
+              sessionHeaderJwt = ctx.response.headers.get("set-auth-jwt");
+            },
+          },
+        });
+
         const sessionData = sessionResult.data as unknown as
           | { user?: UserSummary; session?: { user?: UserSummary } }
           | null;
@@ -29,16 +38,28 @@ export default function AuthDebugPage() {
           return;
         }
 
+        let token: string | undefined;
         const tokenResult = await authClient.token();
-        const tokenData = tokenResult.data as unknown as { token?: string } | null;
-        const token = tokenData?.token;
+        if (!tokenResult.error) {
+          const tokenData = tokenResult.data as unknown as { token?: string } | null;
+          token = tokenData?.token;
+        }
+
+        token ??= sessionHeaderJwt ?? undefined;
 
         if (!active) return;
         setUser(resolvedUser);
         setJwtReady(Boolean(token));
 
+        if (!token) {
+          setError(
+            "A sessão está ativa, mas o Managed Better Auth ainda não disponibilizou o JWT para este navegador.",
+          );
+          return;
+        }
+
         const apiBaseUrl = process.env.NEXT_PUBLIC_DINDIN_API_URL?.replace(/\/$/, "");
-        if (!apiBaseUrl || !token) return;
+        if (!apiBaseUrl) return;
 
         setApiState("pending");
         const response = await fetch(`${apiBaseUrl}/v1/me`, {
