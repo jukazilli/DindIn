@@ -22,6 +22,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [Modelagem de Dados e Contratos do Domínio](docs/data-model-domain-contracts.md)
 - [Modelo Canônico de Disponível para Gastar](docs/available-to-spend-model.md)
 - [Schema Lógico, Constraints e Índices](docs/logical-schema.md)
+- [API do Primeiro Vertical Slice](docs/api-first-vertical-slice.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -70,13 +71,22 @@ Concluído na fundação técnica:
 - modelo canônico de `Disponível para gastar`;
 - schema lógico de dados, constraints e índices.
 
-## Implementação técnica iniciada
+## Implementação técnica
 
-A implementação começou pelo primeiro vertical slice, sem antecipar features maiores.
+O primeiro vertical slice já possui domínio, contratos, persistência e API separados.
 
 Estrutura atual:
 
 ```text
+apps/
+  api/
+    src/
+      adapters/
+      application/
+      http/
+      ports/
+      testing/
+
 packages/
   db/
     src/schema/
@@ -90,22 +100,51 @@ packages/
 
 Já estão traduzidos para código:
 
-- schema Drizzle de perfil;
-- contas financeiras;
-- categorias;
-- transações;
-- planejamento mensal;
-- definições de orçamento;
-- períodos de orçamento;
-- realocações auditáveis;
-- factory de conexão Neon + Drizzle;
-- contratos Zod de dinheiro, perfil, contas, categorias, planejamento, orçamentos e transações;
+- schema Drizzle de perfil, contas, categorias, transações e planejamento;
+- `M001–M003` para identity/core, transactions e planning/budgets;
+- contratos Zod compartilhados;
+- valores monetários JSON como strings inteiras em centavos;
 - package `@dindin/domain` sem dependência de banco/UI;
 - motor puro de `Disponível para gastar`;
 - fixtures do caso piloto;
-- testes das invariantes financeiras centrais.
+- API Hono do primeiro vertical slice;
+- documento OpenAPI 3.1 em `GET /openapi.json`;
+- camada de aplicação `DindinService`;
+- porta `DindinStore` para persistência;
+- `InMemoryDindinStore` para testes;
+- `DrizzleDindinStore` para PostgreSQL/Neon;
+- composition root `DATABASE_URL → createDb → DrizzleDindinStore → Hono`;
+- CI com typecheck e testes.
 
-Migrations iniciais criadas:
+### Fronteiras atuais
+
+```text
+HTTP / Hono
+    ↓
+Application / DindinService
+    ↓
+DindinStore
+    ↓
+Drizzle / PostgreSQL
+
+Application
+    ↓
+@dindin/domain
+    ↓
+regras financeiras puras
+```
+
+Nenhuma rota HTTP calcula diretamente regras financeiras e o domínio não conhece Neon, Drizzle, Hono, React ou Expo.
+
+### Dinheiro
+
+Valores monetários atravessam contratos JSON como **strings inteiras em centavos** e são convertidos para `bigint` dentro da fronteira da aplicação/domínio.
+
+```text
+R$ 512,34 → "51234" → bigint(51234)
+```
+
+### Migrations iniciais
 
 ```text
 M001 — identity and core
@@ -113,19 +152,11 @@ M002 — transactions
 M003 — planning and budgets
 ```
 
-Os valores monetários atravessam contratos JSON como **strings inteiras em centavos** e são convertidos para `bigint` dentro da fronteira de domínio/banco.
-
-Exemplo:
-
-```text
-R$ 512,34 → "51234" → bigint(51234)
-```
+Essas migrations existem no repositório, mas **ainda não foram aplicadas/validadas em um banco Neon real do DindIn**.
 
 ### Motor de domínio validado
 
-O cálculo de `Disponível para gastar` é implementado em `@dindin/domain` e não conhece Drizzle, Neon, Hono, React ou Expo.
-
-Ele calcula e expõe, entre outros valores:
+O motor calcula:
 
 - renda efetiva;
 - carry-in total;
@@ -137,16 +168,9 @@ Ele calcula e expõe, entre outros valores:
 - conflito de planejamento;
 - disponível para gastar.
 
-O motor também valida invariantes como:
-
-- renda reconciliada obrigatória em plano reconciliado;
-- nenhuma quantia monetária de entrada pode ser negativa;
-- capacidade de orçamento não pode ficar negativa após realocações;
-- realocações de orçamento precisam fechar em débito/crédito equivalente.
+Ele também valida invariantes como renda reconciliada obrigatória, valores não negativos, capacidade de orçamento e equilíbrio das realocações.
 
 ### Caso piloto automatizado
-
-As fixtures automatizam duas leituras importantes do mesmo caso:
 
 ```text
 Reserva de R$ 500 acumulada de períodos anteriores
@@ -156,50 +180,68 @@ Reserva de R$ 500 criada com a renda do próprio mês
 → disponível para gastar = R$ 12
 ```
 
-Essa diferença é deliberada e protege a semântica financeira definida no produto.
+O primeiro fluxo HTTP automatizado também percorre:
+
+```text
+perfil
+→ conta
+→ categoria
+→ montar mês
+→ orçamento protegido/gastável
+→ registrar despesas
+→ consultar disponível para gastar
+```
+
+Com renda de R$ 2.994 e despesas realizadas de R$ 2.482, o endpoint retorna **R$ 512 disponíveis**.
+
+### API atual
+
+```text
+GET  /health
+GET  /openapi.json
+POST /v1/profile
+POST /v1/accounts
+POST /v1/categories
+POST /v1/monthly-plans
+POST /v1/budget-definitions
+POST /v1/budget-periods
+POST /v1/transactions
+GET  /v1/monthly-plans/{monthlyPlanId}/available-to-spend
+```
+
+Durante o piloto técnico, as rotas protegidas usam temporariamente:
+
+```text
+x-dindin-user-id: <UUID>
+```
+
+Esse header **não é autenticação de produção** e deverá ser substituído pelo adapter de Auth antes de qualquer beta com usuários externos.
 
 ### CI
 
-Existe um workflow de CI em `.github/workflows/ci.yml`.
-
-A baseline atual foi validada com:
+A baseline atual foi validada em 14/09/2026 com:
 
 ```text
 pnpm install
-→ typecheck dos 3 packages
-→ testes
+pnpm typecheck
+pnpm test
 ```
 
-Resultado da validação do domínio em 14/09/2026:
+Resultado:
 
 ```text
 @dindin/contracts  typecheck OK
 @dindin/db         typecheck OK
 @dindin/domain     typecheck OK
+@dindin/api        typecheck OK
 
-available-to-spend.test.ts
-13 testes aprovados
+Domain: 13 testes aprovados
+API:     3 testes HTTP aprovados
 ```
 
 A CI usa Node.js 22 e pnpm 10.34.5.
 
-### Validação ainda obrigatória antes do primeiro deploy de banco
-
-A camada TypeScript e os testes puros já passaram pela CI, mas ainda não aplicamos migrations em um banco real.
-
-Antes de qualquer ambiente compartilhado é obrigatório:
-
-1. validar geração/snapshots com Drizzle Kit;
-2. aplicar `M001–M003` em um banco Neon de desenvolvimento vazio;
-3. executar smoke tests de constraints e foreign keys;
-4. comparar o schema gerado com `docs/logical-schema.md`;
-5. só então promover migrations para outro ambiente.
-
-Nenhuma migration deve ser aplicada diretamente em produção sem esse ciclo.
-
-### Arquitetura técnica aprovada como baseline
-
-A baseline utiliza:
+## Arquitetura técnica aprovada como baseline
 
 - TypeScript end-to-end;
 - monorepo com pnpm + Turborepo;
@@ -227,7 +269,7 @@ Princípio de infraestrutura:
 
 > **Free-first, não free-forever.**
 
-### Modelagem consolidada
+## Modelagem consolidada
 
 A modelagem separa explicitamente:
 
@@ -235,15 +277,13 @@ A modelagem separa explicitamente:
 - dinheiro planejado;
 - compromissos futuros.
 
-Regra de modelagem:
-
 > **Persistir fatos e decisões; calcular projeções e indicadores a partir deles.**
 
 `Disponível para gastar`, orçamento restante, comprometimento futuro e progresso de objetivos são valores derivados e não campos editáveis.
 
 ### Disponível para gastar
 
-O DindIn adotará um único cálculo canônico. Ele representa quanto ainda pode ser consumido sem invadir dinheiro protegido nem ignorar compromissos conhecidos.
+O DindIn adota um único cálculo canônico. Ele representa quanto ainda pode ser consumido sem invadir dinheiro protegido nem ignorar compromissos conhecidos.
 
 Princípios fechados:
 
@@ -259,31 +299,21 @@ Princípios fechados:
 
 ## Próxima etapa técnica
 
-Com o motor de domínio validado, o próximo bloco é:
+A próxima fronteira é externa ao código: **validar o primeiro vertical slice em um PostgreSQL/Neon real e isolado do DindIn**.
 
-1. definir os primeiros contratos OpenAPI;
-2. criar o `apps/api` com Hono;
-3. implementar adapters entre contratos JSON e o domínio `bigint`;
-4. criar endpoints do primeiro vertical slice;
-5. integrar repositórios Drizzle somente atrás da camada de aplicação;
-6. validar `M001–M003` em Neon de desenvolvimento;
-7. executar o primeiro fluxo ponta a ponta.
+Sequência planejada:
 
-Primeiro vertical slice:
+1. provisionar um projeto/ambiente Neon exclusivo de desenvolvimento para o DindIn;
+2. obter a conexão somente no ambiente seguro, sem versionar credenciais;
+3. validar geração/snapshots com Drizzle Kit;
+4. aplicar `M001–M003` em banco vazio;
+5. executar smoke tests de CHECKs, FKs, UNIQUEs e ownership;
+6. executar o mesmo fluxo HTTP usando `DrizzleDindinStore`;
+7. comparar o resultado com o adapter em memória;
+8. registrar a validação das migrations;
+9. depois conectar o adapter de autenticação e preparar o primeiro deploy dev em Cloudflare Workers.
 
-```text
-perfil
-→ conta
-→ categoria
-→ montar mês
-→ orçamento
-→ registrar despesa
-→ recalcular orçamento
-→ recalcular disponível para gastar
-→ exibir resultado
-```
-
-A implementação continuará por **vertical slices**, evitando construir banco, API e frontends como projetos isolados.
+No momento **não existe um projeto Neon chamado DindIn** entre os projetos conectados. Nenhum projeto existente de outro produto será reutilizado.
 
 Ainda permanecem fora do primeiro marco:
 
