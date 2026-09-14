@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789353600000,
+      "tag": "0001_m001_identity_and_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789353660000,
+      "tag": "0002_m002_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789353720000,
+      "tag": "0003_m003_planning_and_budgets",
+      "breakpoints": true
+    }
+  ]
+}
