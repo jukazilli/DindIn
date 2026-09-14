@@ -23,6 +23,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [Modelo Canônico de Disponível para Gastar](docs/available-to-spend-model.md)
 - [Schema Lógico, Constraints e Índices](docs/logical-schema.md)
 - [API do Primeiro Vertical Slice](docs/api-first-vertical-slice.md)
+- [Autenticação e Identidade](docs/authentication.md)
 - [Validação do Banco de Desenvolvimento](docs/database-validation.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
@@ -71,7 +72,8 @@ Concluído na fundação técnica:
 - registro formal das decisões arquiteturais aceitas;
 - modelo canônico de `Disponível para gastar`;
 - schema lógico de dados, constraints e índices;
-- `M001–M003` validadas e promovidas no Neon `DindIn-dev`.
+- `M001–M003` validadas e promovidas no Neon `DindIn-dev`;
+- fronteira de identidade desacoplada da camada HTTP.
 
 ## Implementação técnica
 
@@ -86,6 +88,7 @@ apps/
       adapters/
       application/
       http/
+      integration/
       ports/
       testing/
 
@@ -115,13 +118,20 @@ Já estão traduzidos para código:
 - porta `DindinStore` para persistência;
 - `InMemoryDindinStore` para testes;
 - `DrizzleDindinStore` para PostgreSQL/Neon;
-- composition root `DATABASE_URL → createDb → DrizzleDindinStore → Hono`;
-- CI com typecheck e testes.
+- porta `IdentityProvider` para autenticação;
+- `PilotHeaderIdentityProvider` para piloto pessoal;
+- `NeonJwtIdentityProvider` preparado para Managed Better Auth;
+- composition root para banco + identidade;
+- teste de integração opt-in para `DindIn-dev`;
+- workflow manual de integração Neon;
+- CI com typecheck e testes rápidos.
 
 ### Fronteiras atuais
 
 ```text
 HTTP / Hono
+    ↓
+IdentityProvider
     ↓
 Application / DindinService
     ↓
@@ -136,7 +146,7 @@ Application
 regras financeiras puras
 ```
 
-Nenhuma rota HTTP calcula diretamente regras financeiras e o domínio não conhece Neon, Drizzle, Hono, React ou Expo.
+Nenhuma rota HTTP calcula diretamente regras financeiras. O domínio não conhece Neon, Drizzle, Hono, autenticação, React ou Expo.
 
 ### Dinheiro
 
@@ -169,9 +179,7 @@ budget_periods
 budget_reallocations
 ```
 
-Foram confirmados CHECKs, foreign keys e índices críticos, incluindo a relação `transactions.budget_period_id → budget_periods.id` e as unicidades de planejamento mensal e período de orçamento.
-
-Detalhes: [Validação do Banco de Desenvolvimento](docs/database-validation.md).
+Foram confirmados CHECKs, foreign keys e índices críticos. Detalhes: [Validação do Banco de Desenvolvimento](docs/database-validation.md).
 
 ### Motor de domínio validado
 
@@ -199,7 +207,7 @@ Reserva de R$ 500 criada com a renda do próprio mês
 → disponível para gastar = R$ 12
 ```
 
-O primeiro fluxo HTTP automatizado também percorre:
+O primeiro fluxo HTTP automatizado percorre:
 
 ```text
 perfil
@@ -213,7 +221,7 @@ perfil
 
 Com renda de R$ 2.994 e despesas realizadas de R$ 2.482, o endpoint retorna **R$ 512 disponíveis**.
 
-A mesma leitura de R$ 512 também foi reproduzida no PostgreSQL real durante a validação da branch temporária antes da promoção das migrations.
+A mesma leitura de R$ 512 foi reproduzida no PostgreSQL real durante a validação das migrations.
 
 ### API atual
 
@@ -230,17 +238,54 @@ POST /v1/transactions
 GET  /v1/monthly-plans/{monthlyPlanId}/available-to-spend
 ```
 
-Durante o piloto técnico, as rotas protegidas usam temporariamente:
+### Identidade
+
+A API depende de `IdentityProvider` em vez de ler um mecanismo de autenticação fixo nas rotas.
+
+Durante o piloto técnico existe:
 
 ```text
 x-dindin-user-id: <UUID>
 ```
 
-Esse header **não é autenticação de produção** e deverá ser substituído pelo adapter de Auth antes de qualquer beta com usuários externos.
+Esse fallback **não é autenticação de produção**.
+
+O adapter real preparado para ambientes autenticados aceita:
+
+```text
+Authorization: Bearer <JWT>
+```
+
+O `NeonJwtIdentityProvider` valida JWT via JWKS, issuer, audience e EdDSA antes de entregar o `userId` à aplicação. O Managed Better Auth ainda não foi provisionado no ambiente; detalhes em [Autenticação e Identidade](docs/authentication.md).
+
+### Integração real com Neon
+
+Existe um teste opt-in em:
+
+```text
+apps/api/src/integration/neon-flow.integration.test.ts
+```
+
+Ele só executa com:
+
+```text
+DINDIN_INTEGRATION_TARGET=DindIn-dev
+DINDIN_INTEGRATION_DATABASE_URL=<secret>
+```
+
+A CI comum não recebe esse segredo e, portanto, mantém o teste de integração `skipped` sem falhar.
+
+O workflow manual está em:
+
+```text
+.github/workflows/integration-neon.yml
+```
+
+A connection string nunca deve ser versionada.
 
 ### CI
 
-A baseline atual foi validada em 14/09/2026 com:
+A baseline atual é validada com:
 
 ```text
 pnpm install
@@ -248,7 +293,7 @@ pnpm typecheck
 pnpm test
 ```
 
-Resultado:
+Estado atual:
 
 ```text
 @dindin/contracts  typecheck OK
@@ -257,7 +302,8 @@ Resultado:
 @dindin/api        typecheck OK
 
 Domain: 13 testes aprovados
-API:     3 testes HTTP aprovados
+API: testes HTTP aprovados
+Neon integration: opt-in / skipped sem secret
 ```
 
 A CI usa Node.js 22 e pnpm 10.34.5.
@@ -271,7 +317,7 @@ A CI usa Node.js 22 e pnpm 10.34.5.
 - Hono para API;
 - PostgreSQL no Neon;
 - Drizzle ORM;
-- Neon Auth atrás de uma abstração interna;
+- Managed Better Auth/Neon Auth atrás de uma abstração interna;
 - Cloudflare Workers para API;
 - Cloudflare R2 para objetos/backups;
 - Vercel apenas durante o piloto pessoal/não comercial do Web;
@@ -320,22 +366,22 @@ Princípios fechados:
 
 ## Próxima etapa técnica
 
-A baseline de banco já está validada no Neon. O próximo passo é executar o **primeiro vertical slice ponta a ponta usando a API real contra `DrizzleDindinStore` e `DindIn-dev`**.
+A próxima mudança externa é ativar o **Managed Better Auth** no `DindIn-dev` e validar o `NeonJwtIdentityProvider` com um token/JWKS real.
 
-Sequência planejada:
+Antes disso, o workflow de integração Neon já está pronto para execução manual assim que o secret `DINDIN_INTEGRATION_DATABASE_URL` estiver configurado no GitHub.
 
-1. configurar `DATABASE_URL` apenas em ambiente seguro, sem versionar credenciais;
-2. executar a API Hono conectada ao `DindIn-dev`;
-3. criar perfil, conta e categoria pela API;
-4. montar o mês e os orçamentos pela API;
-5. registrar as despesas do caso piloto;
-6. consultar `available-to-spend` pela API;
-7. confirmar **R$ 512** usando PostgreSQL real;
-8. tornar esse fluxo um teste de integração reexecutável;
-9. conectar o adapter de autenticação;
-10. preparar o primeiro deploy dev em Cloudflare Workers.
+Sequência seguinte:
 
-Depois dessa validação, o primeiro vertical slice do backend poderá ser considerado completo em infraestrutura real.
+```text
+Managed Better Auth no DindIn-dev
+→ sessão/token real
+→ JWT/JWKS real
+→ teste autenticado
+→ Cloudflare Worker entrypoint
+→ secrets/env
+→ primeiro deploy dev
+→ Web/Mobile consumindo a API
+```
 
 Ainda permanecem fora do primeiro marco:
 
