@@ -17,9 +17,7 @@
   "dependencies": {
     "@dindin/contracts": "workspace:*",
     "@dindin/domain": "workspace:*",
-    "@hono/zod-openapi": "latest",
-    "hono": "latest",
-    "zod": "latest"
+    "hono": "latest"
   },
   "devDependencies": {
     "typescript": "latest",
