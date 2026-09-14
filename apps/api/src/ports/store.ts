@@ -20,7 +20,7 @@ export interface ProfileWrite {
   locale: string;
   timezone: string;
   defaultCurrency: string;
-  financialMonthDay?: number | null;
+  financialMonthDay?: number | null | undefined;
 }
 
 export interface FinancialAccountWrite {
@@ -37,8 +37,8 @@ export interface CategoryWrite {
   userId: string;
   name: string;
   categoryKind: string;
-  parentId?: string | null;
-  iconKey?: string | null;
+  parentId?: string | null | undefined;
+  iconKey?: string | null | undefined;
 }
 
 export interface MonthlyPlanWrite {
@@ -57,7 +57,7 @@ export interface BudgetDefinitionWrite {
   name: string;
   budgetKind: string;
   spendability: Spendability;
-  categoryId?: string | null;
+  categoryId?: string | null | undefined;
   rolloverMode: string;
 }
 
@@ -76,16 +76,16 @@ export interface TransactionWrite {
   transactionType: string;
   amountMinor: bigint;
   currency: string;
-  description?: string | null;
-  categoryId?: string | null;
-  sourceAccountId?: string | null;
-  destinationAccountId?: string | null;
-  budgetPeriodId?: string | null;
+  description?: string | null | undefined;
+  categoryId?: string | null | undefined;
+  sourceAccountId?: string | null | undefined;
+  destinationAccountId?: string | null | undefined;
+  budgetPeriodId?: string | null | undefined;
   occurredAt: string;
   localDate: string;
   sourceType: string;
-  externalReference?: string | null;
-  notes?: string | null;
+  externalReference?: string | null | undefined;
+  notes?: string | null | undefined;
 }
 
 export interface PlanningBudgetProjection {
@@ -104,7 +104,7 @@ export interface PlanningProjection {
   status: PlanStatus;
   fundingState: FundingState;
   expectedIncomeMinor: bigint;
-  reconciledIncomeMinor?: bigint | null;
+  reconciledIncomeMinor?: bigint | null | undefined;
   unassignedCarryInMinor: bigint;
   budgets: readonly PlanningBudgetProjection[];
   unbudgetedPostedExpensesMinor: bigint;
