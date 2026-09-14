@@ -21,6 +21,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [Registro de Decisões de Arquitetura](docs/architecture-decisions.md)
 - [Modelagem de Dados e Contratos do Domínio](docs/data-model-domain-contracts.md)
 - [Modelo Canônico de Disponível para Gastar](docs/available-to-spend-model.md)
+- [Schema Lógico, Constraints e Índices](docs/logical-schema.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -65,15 +66,13 @@ Concluído na fundação técnica:
 - arquitetura recomendada;
 - engenharia e infraestrutura base;
 - seleção inicial de tecnologias;
-- registro formal das decisões arquiteturais aceitas.
+- registro formal das decisões arquiteturais aceitas;
+- modelo canônico de `Disponível para gastar`;
+- schema lógico de dados, constraints e índices.
 
-Em validação técnica:
+Em validação final antes das migrations:
 
-- **modelagem de dados e contratos do domínio**.
-
-Decisão de domínio já consolidada:
-
-- **modelo canônico de `Disponível para gastar`**.
+- **contratos de domínio/API e tradução do schema lógico para Drizzle**.
 
 ### Arquitetura técnica aprovada como baseline
 
@@ -107,7 +106,7 @@ Princípio de infraestrutura:
 
 O piloto deve priorizar serviços gratuitos e escaláveis, mas limites e termos comerciais serão revalidados no momento do provisionamento. A arquitetura não deve depender de gratuidade permanente.
 
-### Modelagem proposta
+### Modelagem consolidada
 
 A modelagem separa explicitamente:
 
@@ -115,27 +114,23 @@ A modelagem separa explicitamente:
 - dinheiro planejado;
 - compromissos futuros.
 
-Principais entidades propostas:
-
-- perfil;
-- contas financeiras;
-- categorias;
-- transações;
-- planejamento mensal;
-- definições e períodos de orçamento;
-- compromissos recorrentes;
-- planos de parcelamento e parcelas;
-- objetivos e contribuições;
-- intenções de compra e análises;
-- itens de necessidade;
-- fechamentos mensais;
-- auditoria, idempotência e outbox.
-
 Regra de modelagem:
 
 > **Persistir fatos e decisões; calcular projeções e indicadores a partir deles.**
 
 `Disponível para gastar`, orçamento restante, comprometimento futuro e progresso de objetivos são valores derivados e não campos editáveis.
+
+O schema lógico já define, entre outros pontos:
+
+- `monthly_plans` com renda `projected` ou `reconciled`;
+- `budget_definitions` e `budget_periods` separados;
+- `budget_reallocations` auditáveis no lugar de ajustes opacos;
+- `budget_commitment_allocations` para cobertura explícita de obrigações;
+- transações anuláveis, não apagadas silenciosamente;
+- parcelamentos com plano e parcelas individualizadas;
+- fechamento mensal versionado;
+- idempotência, auditoria e outbox;
+- constraints e índices iniciais orientados aos padrões reais de consulta.
 
 ### Disponível para gastar
 
@@ -155,22 +150,33 @@ Princípios já fechados:
 
 ## Próxima etapa técnica
 
-Antes de gerar migrations, fechar os refinamentos restantes da modelagem e então converter a proposta em schema implementável.
+O próximo passo é transformar a baseline lógica em **contratos implementáveis**, sem ainda tentar desenvolver o produto inteiro.
 
 Sequência recomendada:
 
-1. incorporar os refinamentos do modelo canônico ao schema lógico;
-2. substituir ajustes opacos por realocações auditáveis de orçamento;
-3. fechar entidades, constraints e índices;
-4. converter entidades em schemas Drizzle;
-5. criar migrations M001–M007;
-6. criar schemas Zod;
-7. definir contratos OpenAPI;
-8. criar fixtures do caso piloto;
-9. criar testes das invariantes financeiras;
-10. implementar o primeiro vertical slice.
+1. converter o primeiro subconjunto para schemas Drizzle;
+2. fechar migrations `M001–M003` do primeiro vertical slice;
+3. definir schemas Zod do domínio;
+4. definir contratos OpenAPI iniciais;
+5. criar fixtures do caso piloto;
+6. criar testes das invariantes financeiras;
+7. implementar o primeiro vertical slice completo.
 
-A implementação deverá ocorrer por **vertical slices**, evitando construir banco, API e frontends como projetos isolados.
+Primeiro vertical slice:
+
+```text
+perfil
+→ conta
+→ categoria
+→ montar mês
+→ orçamento
+→ registrar despesa
+→ recalcular orçamento
+→ recalcular disponível para gastar
+→ exibir resultado
+```
+
+A implementação continuará por **vertical slices**, evitando construir banco, API e frontends como projetos isolados.
 
 Ainda permanecem fora do primeiro marco:
 
