@@ -74,7 +74,7 @@ Concluído na fundação técnica:
 
 A implementação começou pelo primeiro vertical slice, sem antecipar features maiores.
 
-Estrutura inicial criada:
+Estrutura atual:
 
 ```text
 packages/
@@ -83,6 +83,9 @@ packages/
     migrations/
   contracts/
     src/
+  domain/
+    src/planning/
+    src/testing/
 ```
 
 Já estão traduzidos para código:
@@ -96,7 +99,11 @@ Já estão traduzidos para código:
 - períodos de orçamento;
 - realocações auditáveis;
 - factory de conexão Neon + Drizzle;
-- contratos Zod de dinheiro, perfil, contas, categorias, planejamento, orçamentos e transações.
+- contratos Zod de dinheiro, perfil, contas, categorias, planejamento, orçamentos e transações;
+- package `@dindin/domain` sem dependência de banco/UI;
+- motor puro de `Disponível para gastar`;
+- fixtures do caso piloto;
+- testes das invariantes financeiras centrais.
 
 Migrations iniciais criadas:
 
@@ -114,16 +121,79 @@ Exemplo:
 R$ 512,34 → "51234" → bigint(51234)
 ```
 
-### Validação obrigatória antes do primeiro deploy
+### Motor de domínio validado
 
-Esta baseline foi criada antes de um ambiente local com as dependências do projeto instaladas. Portanto, antes de aplicar as migrations em qualquer ambiente compartilhado é obrigatório:
+O cálculo de `Disponível para gastar` é implementado em `@dindin/domain` e não conhece Drizzle, Neon, Hono, React ou Expo.
 
-1. executar `pnpm install`;
-2. executar typecheck dos packages;
-3. validar o schema com Drizzle Kit;
-4. aplicar `M001–M003` em um banco Neon de desenvolvimento vazio;
-5. confirmar os snapshots/metadata do Drizzle;
-6. executar testes das invariantes financeiras.
+Ele calcula e expõe, entre outros valores:
+
+- renda efetiva;
+- carry-in total;
+- recursos efetivos;
+- despesas realizadas;
+- saldo protegido restante;
+- compromissos conhecidos sem cobertura;
+- dinheiro sem destino;
+- conflito de planejamento;
+- disponível para gastar.
+
+O motor também valida invariantes como:
+
+- renda reconciliada obrigatória em plano reconciliado;
+- nenhuma quantia monetária de entrada pode ser negativa;
+- capacidade de orçamento não pode ficar negativa após realocações;
+- realocações de orçamento precisam fechar em débito/crédito equivalente.
+
+### Caso piloto automatizado
+
+As fixtures automatizam duas leituras importantes do mesmo caso:
+
+```text
+Reserva de R$ 500 acumulada de períodos anteriores
+→ disponível para gastar = R$ 512
+
+Reserva de R$ 500 criada com a renda do próprio mês
+→ disponível para gastar = R$ 12
+```
+
+Essa diferença é deliberada e protege a semântica financeira definida no produto.
+
+### CI
+
+Existe um workflow de CI em `.github/workflows/ci.yml`.
+
+A baseline atual foi validada com:
+
+```text
+pnpm install
+→ typecheck dos 3 packages
+→ testes
+```
+
+Resultado da validação do domínio em 14/09/2026:
+
+```text
+@dindin/contracts  typecheck OK
+@dindin/db         typecheck OK
+@dindin/domain     typecheck OK
+
+available-to-spend.test.ts
+13 testes aprovados
+```
+
+A CI usa Node.js 22 e pnpm 10.34.5.
+
+### Validação ainda obrigatória antes do primeiro deploy de banco
+
+A camada TypeScript e os testes puros já passaram pela CI, mas ainda não aplicamos migrations em um banco real.
+
+Antes de qualquer ambiente compartilhado é obrigatório:
+
+1. validar geração/snapshots com Drizzle Kit;
+2. aplicar `M001–M003` em um banco Neon de desenvolvimento vazio;
+3. executar smoke tests de constraints e foreign keys;
+4. comparar o schema gerado com `docs/logical-schema.md`;
+5. só então promover migrations para outro ambiente.
 
 Nenhuma migration deve ser aplicada diretamente em produção sem esse ciclo.
 
@@ -189,14 +259,15 @@ Princípios fechados:
 
 ## Próxima etapa técnica
 
-Com Drizzle, `M001–M003` e os contratos Zod iniciais criados, o próximo bloco é:
+Com o motor de domínio validado, o próximo bloco é:
 
-1. criar o package `domain` com o motor puro de `Disponível para gastar`;
-2. criar fixtures do caso piloto;
-3. criar testes unitários das invariantes financeiras;
-4. definir os primeiros contratos OpenAPI;
-5. iniciar a API Hono somente depois dos testes do domínio;
-6. montar o primeiro vertical slice ponta a ponta.
+1. definir os primeiros contratos OpenAPI;
+2. criar o `apps/api` com Hono;
+3. implementar adapters entre contratos JSON e o domínio `bigint`;
+4. criar endpoints do primeiro vertical slice;
+5. integrar repositórios Drizzle somente atrás da camada de aplicação;
+6. validar `M001–M003` em Neon de desenvolvimento;
+7. executar o primeiro fluxo ponta a ponta.
 
 Primeiro vertical slice:
 
