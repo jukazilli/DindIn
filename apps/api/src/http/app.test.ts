@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { IdentityProvider } from "../ports/identity-provider";
 import { InMemoryDindinStore } from "../testing/in-memory-store";
 import { createApiApp } from "./app";
 
@@ -163,7 +164,7 @@ describe("DindIn API", () => {
     });
   });
 
-  it("publishes an OpenAPI document with the canonical calculation endpoint", async () => {
+  it("publishes OpenAPI security for bearer auth and the pilot fallback", async () => {
     const app = createApiApp(new InMemoryDindinStore());
     const response = await app.request("/openapi.json");
 
@@ -173,10 +174,11 @@ describe("DindIn API", () => {
     expect(document.paths).toHaveProperty(
       "/v1/monthly-plans/{monthlyPlanId}/available-to-spend",
     );
+    expect(document.components.securitySchemes).toHaveProperty("NeonAuthBearer");
     expect(document.components.securitySchemes).toHaveProperty("PilotUserId");
   });
 
-  it("rejects secured routes without the pilot authentication context", async () => {
+  it("rejects secured routes without an authenticated identity", async () => {
     const app = createApiApp(new InMemoryDindinStore());
     const response = await app.request("/v1/monthly-plans", {
       method: "POST",
@@ -192,5 +194,23 @@ describe("DindIn API", () => {
     expect(await response.json()).toMatchObject({
       error: { code: "UNAUTHORIZED" },
     });
+  });
+
+  it("uses the injected identity provider instead of depending on the pilot header", async () => {
+    const identityProvider: IdentityProvider = {
+      async resolve() {
+        return { userId };
+      },
+    };
+    const app = createApiApp(new InMemoryDindinStore(), identityProvider);
+
+    const response = await app.request("/v1/profile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Identidade por adapter" }),
+    });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({ userId, version: 1 });
   });
 });
