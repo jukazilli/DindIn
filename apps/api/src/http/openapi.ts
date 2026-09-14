@@ -10,7 +10,7 @@ const signedMoneyMinor = {
 } as const;
 
 const uuid = { type: "string", format: "uuid" } as const;
-const secured = [{ PilotUserId: [] }];
+const secured = [{ NeonAuthBearer: [] }, { PilotUserId: [] }];
 
 export const openApiDocument = {
   openapi: "3.1.0",
@@ -181,12 +181,19 @@ export const openApiDocument = {
   },
   components: {
     securitySchemes: {
+      NeonAuthBearer: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description:
+          "JWT verificado pelo adapter de identidade do Managed Better Auth. Esquema destinado aos ambientes com autenticação real habilitada.",
+      },
       PilotUserId: {
         type: "apiKey",
         in: "header",
         name: "x-dindin-user-id",
         description:
-          "Contexto temporário do piloto. Será substituído pelo adapter de autenticação antes de produção.",
+          "Fallback técnico exclusivo do piloto pessoal/desenvolvimento. Não é autenticação segura e deve permanecer desabilitado em beta/produção.",
       },
     },
     responses: {
