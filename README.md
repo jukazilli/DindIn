@@ -23,6 +23,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [Modelo Canônico de Disponível para Gastar](docs/available-to-spend-model.md)
 - [Schema Lógico, Constraints e Índices](docs/logical-schema.md)
 - [API do Primeiro Vertical Slice](docs/api-first-vertical-slice.md)
+- [Validação do Banco de Desenvolvimento](docs/database-validation.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -69,7 +70,8 @@ Concluído na fundação técnica:
 - seleção inicial de tecnologias;
 - registro formal das decisões arquiteturais aceitas;
 - modelo canônico de `Disponível para gastar`;
-- schema lógico de dados, constraints e índices.
+- schema lógico de dados, constraints e índices;
+- `M001–M003` validadas e promovidas no Neon `DindIn-dev`.
 
 ## Implementação técnica
 
@@ -152,7 +154,24 @@ M002 — transactions
 M003 — planning and budgets
 ```
 
-Essas migrations existem no repositório, mas **ainda não foram aplicadas/validadas em um banco Neon real do DindIn**.
+As três migrations foram validadas em uma branch temporária do Neon e, após aprovação, promovidas para a `main` do projeto **DindIn-dev**. A branch temporária foi removida depois da promoção.
+
+O banco `dindin` contém a baseline do primeiro vertical slice:
+
+```text
+profiles
+financial_accounts
+categories
+transactions
+monthly_plans
+budget_definitions
+budget_periods
+budget_reallocations
+```
+
+Foram confirmados CHECKs, foreign keys e índices críticos, incluindo a relação `transactions.budget_period_id → budget_periods.id` e as unicidades de planejamento mensal e período de orçamento.
+
+Detalhes: [Validação do Banco de Desenvolvimento](docs/database-validation.md).
 
 ### Motor de domínio validado
 
@@ -170,7 +189,7 @@ O motor calcula:
 
 Ele também valida invariantes como renda reconciliada obrigatória, valores não negativos, capacidade de orçamento e equilíbrio das realocações.
 
-### Caso piloto automatizado
+### Caso piloto automatizado e validado no PostgreSQL
 
 ```text
 Reserva de R$ 500 acumulada de períodos anteriores
@@ -193,6 +212,8 @@ perfil
 ```
 
 Com renda de R$ 2.994 e despesas realizadas de R$ 2.482, o endpoint retorna **R$ 512 disponíveis**.
+
+A mesma leitura de R$ 512 também foi reproduzida no PostgreSQL real durante a validação da branch temporária antes da promoção das migrations.
 
 ### API atual
 
@@ -299,21 +320,22 @@ Princípios fechados:
 
 ## Próxima etapa técnica
 
-A próxima fronteira é externa ao código: **validar o primeiro vertical slice em um PostgreSQL/Neon real e isolado do DindIn**.
+A baseline de banco já está validada no Neon. O próximo passo é executar o **primeiro vertical slice ponta a ponta usando a API real contra `DrizzleDindinStore` e `DindIn-dev`**.
 
 Sequência planejada:
 
-1. provisionar um projeto/ambiente Neon exclusivo de desenvolvimento para o DindIn;
-2. obter a conexão somente no ambiente seguro, sem versionar credenciais;
-3. validar geração/snapshots com Drizzle Kit;
-4. aplicar `M001–M003` em banco vazio;
-5. executar smoke tests de CHECKs, FKs, UNIQUEs e ownership;
-6. executar o mesmo fluxo HTTP usando `DrizzleDindinStore`;
-7. comparar o resultado com o adapter em memória;
-8. registrar a validação das migrations;
-9. depois conectar o adapter de autenticação e preparar o primeiro deploy dev em Cloudflare Workers.
+1. configurar `DATABASE_URL` apenas em ambiente seguro, sem versionar credenciais;
+2. executar a API Hono conectada ao `DindIn-dev`;
+3. criar perfil, conta e categoria pela API;
+4. montar o mês e os orçamentos pela API;
+5. registrar as despesas do caso piloto;
+6. consultar `available-to-spend` pela API;
+7. confirmar **R$ 512** usando PostgreSQL real;
+8. tornar esse fluxo um teste de integração reexecutável;
+9. conectar o adapter de autenticação;
+10. preparar o primeiro deploy dev em Cloudflare Workers.
 
-No momento **não existe um projeto Neon chamado DindIn** entre os projetos conectados. Nenhum projeto existente de outro produto será reutilizado.
+Depois dessa validação, o primeiro vertical slice do backend poderá ser considerado completo em infraestrutura real.
 
 Ainda permanecem fora do primeiro marco:
 
