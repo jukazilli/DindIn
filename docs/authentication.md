@@ -1,13 +1,11 @@
 # DindIn — Autenticação e Identidade
 
-> Status: **fronteira de autenticação implementada; Managed Better Auth ainda não provisionado**  
+> Status: **fronteira de autenticação implementada e Managed Better Auth provisionado no `DindIn-dev`**  
 > Data de referência: **2026-09**
 
 ## 1. Objetivo
 
-A autenticação do DindIn deve poder evoluir sem contaminar as regras financeiras, os casos de uso ou a camada de persistência.
-
-A aplicação trabalha somente com uma identidade já validada:
+A autenticação do DindIn deve evoluir sem contaminar regras financeiras, casos de uso ou persistência.
 
 ```text
 request
@@ -49,17 +47,15 @@ Arquivo:
 apps/api/src/adapters/pilot-header-identity-provider.ts
 ```
 
-Durante o piloto pessoal existe o adapter:
+Durante o piloto pessoal existe:
 
 ```text
 x-dindin-user-id: <UUID>
 ```
 
-Ele valida somente a forma do UUID e devolve esse valor como identidade.
-
 > **Este mecanismo não é autenticação segura.**
 
-Ele existe exclusivamente para desenvolvimento e piloto pessoal. Possuir um UUID é suficiente para impersonar um usuário, portanto o adapter não pode ser habilitado em beta ou produção pública.
+Ele existe exclusivamente para desenvolvimento e piloto pessoal. Deve permanecer desabilitado em beta e produção pública.
 
 ---
 
@@ -71,39 +67,93 @@ Arquivo:
 apps/api/src/adapters/neon-jwt-identity-provider.ts
 ```
 
-O adapter real foi preparado para tokens emitidos pelo **Managed Better Auth do Neon**, que atualmente é baseado em Better Auth.
+O adapter real recebe JWT emitido pelo Managed Better Auth e valida:
 
-Fluxo previsto:
+- `Authorization: Bearer`;
+- assinatura por JWKS;
+- algoritmo EdDSA;
+- issuer;
+- audience;
+- `sub` como identificador válido de usuário.
+
+Fluxo:
 
 ```text
 Web / Mobile
-→ autentica no Managed Better Auth
-→ obtém sessão
-→ quando a API separada precisar de token, obtém JWT
+→ Managed Better Auth
+→ sessão
+→ JWT quando necessário
 → Authorization: Bearer <token>
 → DindIn API
 → NeonJwtIdentityProvider
 → JWKS
-→ assinatura + issuer + audience
 → userId confiável
 ```
 
-O adapter verifica:
-
-- presença de `Authorization: Bearer`;
-- assinatura por chave pública publicada no JWKS;
-- algoritmo EdDSA;
-- issuer esperado;
-- audience esperada;
-- `sub`/identificador do usuário como UUID válido.
-
-A implementação usa `jose` e `createRemoteJWKSet`, permitindo cache/rotação de chaves sem acoplar as rotas ao provedor.
+A implementação usa `jose` + `createRemoteJWKSet`.
 
 ---
 
-## 5. Composition root
+## 5. Estado real do DindIn-dev
 
-O `composition.ts` pode montar dois cenários.
+O Managed Better Auth foi provisionado na branch principal do projeto `DindIn-dev`, banco `dindin`, usando o provider `better_auth`.
+
+O Neon criou o schema próprio:
+
+```text
+neon_auth
+```
+
+Foram confirmadas estruturas gerenciadas pelo Neon, incluindo:
+
+```text
+neon_auth.user
+neon_auth.session
+neon_auth.account
+neon_auth.verification
+neon_auth.jwks
+neon_auth.organization
+neon_auth.member
+neon_auth.invitation
+neon_auth.project_config
+```
+
+Essas tabelas pertencem ao subsistema de autenticação e não devem ser tratadas como parte do domínio financeiro do DindIn.
+
+A configuração atual possui:
+
+- email/senha habilitado;
+- cadastro habilitado;
+- verificação de email não obrigatória no ambiente de desenvolvimento;
+- `localhost` permitido para desenvolvimento;
+- nenhum domínio confiável customizado cadastrado;
+- email transacional compartilhado do Neon;
+- Google OAuth compartilhado disponibilizado pelo Neon para desenvolvimento.
+
+Importante:
+
+> **Não configuramos credenciais Google próprias do DindIn.**
+
+O provider Google listado atualmente é o provider compartilhado de desenvolvimento fornecido pelo Neon. Antes de produção, OAuth próprio deverá ser configurado e validado separadamente.
+
+---
+
+## 6. Endpoints de autenticação do ambiente
+
+O ambiente agora possui um `NEON_AUTH_BASE_URL` e um endpoint JWKS próprios da branch.
+
+Esses valores devem entrar no runtime como variáveis de ambiente, nunca hardcoded na aplicação:
+
+```text
+NEON_AUTH_BASE_URL
+NEON_AUTH_JWKS_URL
+```
+
+O JWKS é público por design; segredos de sessão, banco, OAuth ou SMTP não devem ser versionados.
+
+---
+
+## 7. Composition root
 
 ### Piloto pessoal
 
@@ -119,19 +169,19 @@ DATABASE_URL
 ```text
 DATABASE_URL
 + NEON_AUTH_BASE_URL
-(+ JWKS URL quando fornecida pela plataforma)
++ NEON_AUTH_JWKS_URL
 → DrizzleDindinStore
 → NeonJwtIdentityProvider
 → createApiApp
 ```
 
-O comportamento financeiro e os casos de uso permanecem os mesmos.
+Casos de uso e domínio permanecem iguais nos dois cenários.
 
 ---
 
-## 6. OpenAPI
+## 8. OpenAPI
 
-As rotas protegidas documentam dois esquemas como alternativas OR:
+As rotas protegidas documentam:
 
 ```text
 NeonAuthBearer
@@ -139,89 +189,79 @@ OU
 PilotUserId
 ```
 
-`NeonAuthBearer`:
-
-```text
-HTTP Bearer / JWT
-```
-
-`PilotUserId`:
-
-```text
-apiKey header x-dindin-user-id
-```
-
-A presença do esquema do piloto no OpenAPI durante o desenvolvimento não significa que ele será habilitado em produção.
+O fallback do piloto existe apenas para desenvolvimento e não representa a configuração prevista para produção.
 
 ---
 
-## 7. Regras de segurança
+## 9. Regras de segurança
 
-1. A API nunca deve aceitar `userId` vindo do corpo da requisição como identidade.
-2. Ownership é derivado exclusivamente do `IdentityProvider`.
-3. Tokens, cookies e connection strings não devem aparecer em logs, analytics ou respostas de erro.
-4. O adapter do piloto deve ser removido/desabilitado no composition root de beta/produção.
-5. O JWT deve ser validado criptograficamente; decodificar sem validar não é autenticação.
-6. `issuer` e `audience` precisam corresponder ao ambiente esperado.
-7. Chaves públicas devem vir do JWKS do ambiente/branch correto.
-8. Erro de token inválido deve retornar `401`, sem revelar detalhes criptográficos ao cliente.
-9. O app não deve persistir JWT de acesso como dado financeiro ou de domínio.
-10. RLS pode ser adicionada como defesa adicional, mas não substitui autorização na aplicação.
+1. A API nunca aceita `userId` do corpo como identidade.
+2. Ownership vem exclusivamente do `IdentityProvider`.
+3. Tokens, cookies e connection strings não aparecem em logs ou analytics.
+4. O adapter do piloto é desabilitado fora do piloto pessoal.
+5. JWT precisa de validação criptográfica completa.
+6. `issuer` e `audience` devem corresponder ao ambiente esperado.
+7. O JWKS deve pertencer à branch/ambiente correto.
+8. Token inválido retorna `401` sem detalhes criptográficos.
+9. JWT de acesso não é persistido como dado de domínio.
+10. RLS pode atuar como defesa adicional, não como substituto da autorização da aplicação.
 
 ---
 
-## 8. Sessão Web versus JWT
+## 10. Sessão Web versus JWT
 
-Para o Web, a preferência é usar a sessão/cookie seguro fornecido pelo Managed Better Auth quando o desenho de implantação permitir.
+No Web, a preferência continua sendo sessão/cookie seguro quando o desenho de implantação permitir.
 
 JWT é especialmente útil para:
 
-- API em domínio/origem separado;
+- API em origem separada;
 - aplicativo mobile;
 - serviços que não compartilham o cookie do navegador.
 
-A decisão de usar JWT na API não significa substituir o gerenciamento de sessão do Web por tokens persistidos manualmente.
+Não devemos armazenar tokens manualmente no browser quando a sessão gerenciada puder ser usada.
 
 ---
 
-## 9. Estado atual
+## 11. Estado atual
 
-Já implementado:
+Já implementado e/ou provisionado:
 
-- `IdentityProvider` como porta;
+- `IdentityProvider`;
 - `PilotHeaderIdentityProvider`;
 - `NeonJwtIdentityProvider`;
-- injeção da identidade em `createApiApp`;
-- composition root para piloto e para JWT;
-- OpenAPI com Bearer JWT + fallback de piloto;
-- teste HTTP provando que as rotas não dependem do header do piloto;
-- `jose` como biblioteca de verificação JWT.
+- composition root para piloto e JWT;
+- OpenAPI com Bearer + fallback do piloto;
+- testes HTTP da abstração de identidade;
+- `jose` para verificação JWT;
+- Managed Better Auth provisionado no `DindIn-dev`;
+- schema `neon_auth` criado;
+- endpoint JWKS disponível;
+- email/senha ativo no ambiente dev.
 
-Ainda não executado:
+Ainda falta validar:
 
-- provisionamento do Managed Better Auth no `DindIn-dev`;
 - criação de usuário real de teste;
 - login real;
 - emissão de JWT real;
-- teste contra JWKS real;
-- configuração de OAuth;
-- configuração de domínio confiável;
-- política final de sessão para Web;
-- fluxo de autenticação do Expo/React Native.
+- validação do JWT real pelo `NeonJwtIdentityProvider`;
+- configuração final de domínio confiável;
+- credenciais OAuth próprias;
+- política final de sessão Web;
+- fluxo Expo/React Native.
 
 ---
 
-## 10. Próxima validação
+## 12. Próxima validação
 
-A próxima etapa de autenticação, após aprovação explícita, é:
+Próximo passo recomendado:
 
 ```text
-provisionar Managed Better Auth no DindIn-dev
-→ consultar configuração gerada
-→ criar usuário técnico de desenvolvimento
-→ obter/validar fluxo de sessão/token
-→ testar NeonJwtIdentityProvider com JWT real
-→ remover dependência do header técnico no primeiro deploy autenticado
+criar usuário técnico de desenvolvimento
+→ executar login real
+→ obter sessão/JWT
+→ validar JWT contra o JWKS real
+→ chamar endpoint protegido da DindIn API
+→ confirmar ownership no PostgreSQL
 ```
 
-Como o Managed Better Auth é um recurso externo e cria estruturas/serviços de autenticação no ambiente Neon, seu provisionamento deve ser uma ação explícita e separada da simples alteração de código.
+A criação desse usuário deve usar um endereço de desenvolvimento controlado e não deve reutilizar credenciais pessoais ou de produção.
