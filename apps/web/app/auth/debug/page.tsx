@@ -5,6 +5,7 @@ import { authClient } from "../../../lib/auth/client";
 
 type UserSummary = { id?: string; name?: string; email?: string };
 type ApiIdentity = { userId?: string };
+type JwtStatus = { jwtReady?: boolean; upstreamStatus?: number | null };
 
 export default function AuthDebugPage() {
   const [user, setUser] = useState<UserSummary | null>(null);
@@ -18,16 +19,7 @@ export default function AuthDebugPage() {
 
     async function validate() {
       try {
-        let sessionHeaderJwt: string | null = null;
-
-        const sessionResult = await authClient.getSession({
-          fetchOptions: {
-            onSuccess(ctx) {
-              sessionHeaderJwt = ctx.response.headers.get("set-auth-jwt");
-            },
-          },
-        });
-
+        const sessionResult = await authClient.getSession();
         const sessionData = sessionResult.data as unknown as
           | { user?: UserSummary; session?: { user?: UserSummary } }
           | null;
@@ -38,44 +30,29 @@ export default function AuthDebugPage() {
           return;
         }
 
-        let token: string | undefined;
-        const tokenResult = await authClient.token();
-        if (!tokenResult.error) {
-          const tokenData = tokenResult.data as unknown as { token?: string } | null;
-          token = tokenData?.token;
-        }
-
-        token ??= sessionHeaderJwt ?? undefined;
-
         if (!active) return;
         setUser(resolvedUser);
-        setJwtReady(Boolean(token));
 
-        if (!token) {
+        const jwtStatusResponse = await fetch("/api/auth/jwt-status", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+        const jwtStatus = (await jwtStatusResponse.json()) as JwtStatus;
+
+        if (!active) return;
+        setJwtReady(Boolean(jwtStatus.jwtReady));
+
+        if (!jwtStatus.jwtReady) {
           setError(
-            "A sessão está ativa, mas o Managed Better Auth ainda não disponibilizou o JWT para este navegador.",
+            "A sessão está ativa, mas o proxy do Managed Better Auth não retornou um JWT nesta verificação.",
           );
           return;
         }
 
-        const apiBaseUrl = process.env.NEXT_PUBLIC_DINDIN_API_URL?.replace(/\/$/, "");
-        if (!apiBaseUrl) return;
-
-        setApiState("pending");
-        const response = await fetch(`${apiBaseUrl}/v1/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          setApiState("error");
-          return;
-        }
-
-        const body = (await response.json()) as ApiIdentity;
-        if (!active) return;
-        setApiIdentity(body);
-        setApiState("ok");
+        // A chamada real à API será feita no servidor no próximo passo, para
+        // que o JWT nunca precise ser devolvido ao JavaScript do navegador.
+        setApiState("not-configured");
       } catch {
         if (active) setError("Falha ao validar a sessão/JWT do ambiente de desenvolvimento.");
       }
