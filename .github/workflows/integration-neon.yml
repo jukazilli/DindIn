@@ -1,0 +1,43 @@
+name: Neon Integration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      DINDIN_INTEGRATION_TARGET: DindIn-dev
+      DINDIN_INTEGRATION_DATABASE_URL: ${{ secrets.DINDIN_INTEGRATION_DATABASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Require integration secret
+        shell: bash
+        run: |
+          if [ -z "${DINDIN_INTEGRATION_DATABASE_URL:-}" ]; then
+            echo "::error::Configure the DINDIN_INTEGRATION_DATABASE_URL repository secret before running this workflow."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Neon integration test
+        run: pnpm --filter @dindin/api test:integration
