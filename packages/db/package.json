@@ -20,6 +20,7 @@
     "drizzle-orm": "latest"
   },
   "devDependencies": {
+    "@types/node": "latest",
     "drizzle-kit": "latest",
     "typescript": "latest"
   }
