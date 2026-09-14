@@ -112,6 +112,11 @@ export function createApiApp(
   app.get("/health", (c) => c.json({ status: "ok", service: "dindin-api" }, 200));
   app.get("/openapi.json", (c) => c.json(openApiDocument, 200));
 
+  app.get("/v1/me", async (c) => {
+    const userId = await requireUserId(c, identityProvider);
+    return c.json({ userId }, 200);
+  });
+
   app.post("/v1/profile", async (c) => {
     const userId = await requireUserId(c, identityProvider);
     const input = await parseJson(c, CreateProfileSchema);

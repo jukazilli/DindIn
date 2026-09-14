@@ -1,0 +1,86 @@
+:root {
+  color-scheme: light;
+  --canvas: #faf9fc;
+  --surface: #ffffff;
+  --ink: #1c1725;
+  --muted: #716a7d;
+  --border: #e9e5ef;
+  --purple: #7028f5;
+  --purple-dark: #4c16b8;
+  --lilac: #f3edff;
+  --gold: #f6c945;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  min-height: 100vh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+button, a { font: inherit; }
+a { color: inherit; }
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card {
+  width: min(100%, 560px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 32px;
+  box-shadow: 0 18px 60px rgba(76, 22, 184, 0.08);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--lilac);
+  color: var(--purple-dark);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+h1 { margin: 18px 0 10px; font-size: clamp(32px, 7vw, 48px); line-height: 1; letter-spacing: -.045em; }
+p { color: var(--muted); line-height: 1.6; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.button {
+  border: 0;
+  border-radius: 14px;
+  padding: 13px 18px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.button-primary { background: var(--purple); color: white; }
+.button-secondary { background: var(--lilac); color: var(--purple-dark); }
+.button:disabled { opacity: .55; cursor: wait; }
+
+.status-grid { display: grid; gap: 10px; margin-top: 24px; }
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.status-row strong { text-align: right; overflow-wrap: anywhere; }
+.good { color: #237a46; }
+.warn { color: #946200; }
+.error { color: #a93444; }
+.note { margin-top: 22px; padding: 14px 16px; border-radius: 16px; background: var(--lilac); font-size: 14px; }

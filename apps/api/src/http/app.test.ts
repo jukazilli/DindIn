@@ -25,192 +25,58 @@ const post = (app: ReturnType<typeof createApiApp>, path: string, body: unknown)
   });
 
 async function seedPilotMonth(app: ReturnType<typeof createApiApp>) {
-  expect(
-    (
-      await post(app, "/v1/profile", {
-        name: "Piloto DindIn",
-      })
-    ).status,
-  ).toBe(201);
-
-  expect(
-    (
-      await post(app, "/v1/accounts", {
-        id: accountId,
-        name: "Conta principal",
-        accountType: "checking",
-      })
-    ).status,
-  ).toBe(201);
-
-  expect(
-    (
-      await post(app, "/v1/categories", {
-        id: categoryId,
-        name: "Despesas gerais",
-        categoryKind: "expense",
-      })
-    ).status,
-  ).toBe(201);
-
-  expect(
-    (
-      await post(app, "/v1/monthly-plans", {
-        id: monthlyPlanId,
-        periodYear: 2026,
-        periodMonth: 9,
-        expectedIncomeMinor: "299400",
-      })
-    ).status,
-  ).toBe(201);
-
-  expect(
-    (
-      await post(app, "/v1/budget-definitions", {
-        id: protectedDefinitionId,
-        name: "Obrigações",
-        budgetKind: "obligation",
-        spendability: "protected",
-        categoryId,
-      })
-    ).status,
-  ).toBe(201);
-
-  expect(
-    (
-      await post(app, "/v1/budget-periods", {
-        id: protectedPeriodId,
-        monthlyPlanId,
-        budgetDefinitionId: protectedDefinitionId,
-        plannedMinor: "145200",
-      })
-    ).status,
-  ).toBe(201);
-
-  expect(
-    (
-      await post(app, "/v1/budget-definitions", {
-        id: spendableDefinitionId,
-        name: "Consumo e livre",
-        budgetKind: "consumption",
-        spendability: "spendable",
-        categoryId,
-      })
-    ).status,
-  ).toBe(201);
-
-  expect(
-    (
-      await post(app, "/v1/budget-periods", {
-        id: spendablePeriodId,
-        monthlyPlanId,
-        budgetDefinitionId: spendableDefinitionId,
-        plannedMinor: "154200",
-      })
-    ).status,
-  ).toBe(201);
-
-  expect(
-    (
-      await post(app, "/v1/transactions", {
-        transactionType: "expense",
-        amountMinor: "145200",
-        categoryId,
-        sourceAccountId: accountId,
-        budgetPeriodId: protectedPeriodId,
-        occurredAt: "2026-09-10T12:00:00.000Z",
-        localDate: "2026-09-10",
-      })
-    ).status,
-  ).toBe(201);
-
-  expect(
-    (
-      await post(app, "/v1/transactions", {
-        transactionType: "expense",
-        amountMinor: "103000",
-        categoryId,
-        sourceAccountId: accountId,
-        budgetPeriodId: spendablePeriodId,
-        occurredAt: "2026-09-12T12:00:00.000Z",
-        localDate: "2026-09-12",
-      })
-    ).status,
-  ).toBe(201);
+  expect((await post(app, "/v1/profile", { name: "Piloto DindIn" })).status).toBe(201);
+  expect((await post(app, "/v1/accounts", { id: accountId, name: "Conta principal", accountType: "checking" })).status).toBe(201);
+  expect((await post(app, "/v1/categories", { id: categoryId, name: "Despesas gerais", categoryKind: "expense" })).status).toBe(201);
+  expect((await post(app, "/v1/monthly-plans", { id: monthlyPlanId, periodYear: 2026, periodMonth: 9, expectedIncomeMinor: "299400" })).status).toBe(201);
+  expect((await post(app, "/v1/budget-definitions", { id: protectedDefinitionId, name: "Obrigações", budgetKind: "obligation", spendability: "protected", categoryId })).status).toBe(201);
+  expect((await post(app, "/v1/budget-periods", { id: protectedPeriodId, monthlyPlanId, budgetDefinitionId: protectedDefinitionId, plannedMinor: "145200" })).status).toBe(201);
+  expect((await post(app, "/v1/budget-definitions", { id: spendableDefinitionId, name: "Consumo e livre", budgetKind: "consumption", spendability: "spendable", categoryId })).status).toBe(201);
+  expect((await post(app, "/v1/budget-periods", { id: spendablePeriodId, monthlyPlanId, budgetDefinitionId: spendableDefinitionId, plannedMinor: "154200" })).status).toBe(201);
+  expect((await post(app, "/v1/transactions", { transactionType: "expense", amountMinor: "145200", categoryId, sourceAccountId: accountId, budgetPeriodId: protectedPeriodId, occurredAt: "2026-09-10T12:00:00.000Z", localDate: "2026-09-10" })).status).toBe(201);
+  expect((await post(app, "/v1/transactions", { transactionType: "expense", amountMinor: "103000", categoryId, sourceAccountId: accountId, budgetPeriodId: spendablePeriodId, occurredAt: "2026-09-12T12:00:00.000Z", localDate: "2026-09-12" })).status).toBe(201);
 }
 
 describe("DindIn API", () => {
   it("executes the first vertical slice and returns R$ 512 available", async () => {
     const app = createApiApp(new InMemoryDindinStore());
     await seedPilotMonth(app);
-
-    const response = await app.request(
-      `/v1/monthly-plans/${monthlyPlanId}/available-to-spend`,
-      { headers: { "x-dindin-user-id": userId } },
-    );
-
+    const response = await app.request(`/v1/monthly-plans/${monthlyPlanId}/available-to-spend`, { headers: { "x-dindin-user-id": userId } });
     expect(response.status).toBe(200);
-    const body = await response.json();
-
-    expect(body).toMatchObject({
-      monthlyPlanId,
-      currency: "BRL",
-      effectiveFundsMinor: "299400",
-      postedExpensesMinor: "248200",
-      protectedRemainingMinor: "0",
-      unassignedMinor: "0",
-      availableToSpendMinor: "51200",
-      hasPlanningConflict: false,
-    });
+    expect(await response.json()).toMatchObject({ monthlyPlanId, currency: "BRL", effectiveFundsMinor: "299400", postedExpensesMinor: "248200", protectedRemainingMinor: "0", unassignedMinor: "0", availableToSpendMinor: "51200", hasPlanningConflict: false });
   });
 
   it("publishes OpenAPI security for bearer auth and the pilot fallback", async () => {
     const app = createApiApp(new InMemoryDindinStore());
     const response = await app.request("/openapi.json");
-
     expect(response.status).toBe(200);
     const document = await response.json();
     expect(document.openapi).toBe("3.1.0");
-    expect(document.paths).toHaveProperty(
-      "/v1/monthly-plans/{monthlyPlanId}/available-to-spend",
-    );
+    expect(document.paths).toHaveProperty("/v1/monthly-plans/{monthlyPlanId}/available-to-spend");
     expect(document.components.securitySchemes).toHaveProperty("NeonAuthBearer");
     expect(document.components.securitySchemes).toHaveProperty("PilotUserId");
   });
 
   it("rejects secured routes without an authenticated identity", async () => {
     const app = createApiApp(new InMemoryDindinStore());
-    const response = await app.request("/v1/monthly-plans", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        periodYear: 2026,
-        periodMonth: 9,
-        expectedIncomeMinor: "299400",
-      }),
-    });
-
+    const response = await app.request("/v1/monthly-plans", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ periodYear: 2026, periodMonth: 9, expectedIncomeMinor: "299400" }) });
     expect(response.status).toBe(401);
-    expect(await response.json()).toMatchObject({
-      error: { code: "UNAUTHORIZED" },
-    });
+    expect(await response.json()).toMatchObject({ error: { code: "UNAUTHORIZED" } });
   });
 
   it("uses the injected identity provider instead of depending on the pilot header", async () => {
-    const identityProvider: IdentityProvider = {
-      async resolve() {
-        return { userId };
-      },
-    };
+    const identityProvider: IdentityProvider = { async resolve() { return { userId }; } };
     const app = createApiApp(new InMemoryDindinStore(), identityProvider);
-
-    const response = await app.request("/v1/profile", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: "Identidade por adapter" }),
-    });
-
+    const response = await app.request("/v1/profile", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "Identidade por adapter" }) });
     expect(response.status).toBe(201);
     expect(await response.json()).toMatchObject({ userId, version: 1 });
+  });
+
+  it("exposes the authenticated identity through GET /v1/me", async () => {
+    const identityProvider: IdentityProvider = { async resolve() { return { userId }; } };
+    const app = createApiApp(new InMemoryDindinStore(), identityProvider);
+    const response = await app.request("/v1/me");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ userId });
   });
 });
