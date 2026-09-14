@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   char,
   check,
   index,
@@ -73,7 +74,7 @@ export const budgetDefinitions = pgTable(
     spendability: text("spendability").notNull(),
     categoryId: uuid("category_id").references(() => categories.id, { onDelete: "restrict" }),
     rolloverMode: text("rollover_mode").notNull().default("none"),
-    isActive: text("is_active").notNull().default("true"),
+    isActive: boolean("is_active").notNull().default(true),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -93,7 +94,6 @@ export const budgetDefinitions = pgTable(
       "budget_definitions_rollover_check",
       sql`${table.rolloverMode} IN ('none','positive_only','full')`,
     ),
-    check("budget_definitions_active_check", sql`${table.isActive} IN ('true','false')`),
     check("budget_definitions_version_check", sql`${table.version} >= 1`),
   ],
 );
