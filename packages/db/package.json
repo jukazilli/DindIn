@@ -1,0 +1,26 @@
+{
+  "name": "@dindin/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "echo \"db tests pending\""
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "latest",
+    "drizzle-orm": "latest"
+  },
+  "devDependencies": {
+    "drizzle-kit": "latest",
+    "typescript": "latest"
+  }
+}
