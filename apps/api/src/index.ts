@@ -1,3 +1,4 @@
+export * from "./adapters/drizzle-store";
 export * from "./application/dindin-service";
 export * from "./application/errors";
 export * from "./http/app";
