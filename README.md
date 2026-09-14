@@ -20,6 +20,7 @@ O diferencial do DindIn é atuar também **antes da compra**: mostrar quanto o u
 - [Engenharia, Arquitetura e Infraestrutura](docs/architecture-engineering-infrastructure.md)
 - [Registro de Decisões de Arquitetura](docs/architecture-decisions.md)
 - [Modelagem de Dados e Contratos do Domínio](docs/data-model-domain-contracts.md)
+- [Modelo Canônico de Disponível para Gastar](docs/available-to-spend-model.md)
 - [Moodboard oficial aprovado](docs/assets/moodboard-dindin.jpg)
 
 ## Direção visual aprovada
@@ -69,6 +70,10 @@ Concluído na fundação técnica:
 Em validação técnica:
 
 - **modelagem de dados e contratos do domínio**.
+
+Decisão de domínio já consolidada:
+
+- **modelo canônico de `Disponível para gastar`**.
 
 ### Arquitetura técnica aprovada como baseline
 
@@ -132,20 +137,38 @@ Regra de modelagem:
 
 `Disponível para gastar`, orçamento restante, comprometimento futuro e progresso de objetivos são valores derivados e não campos editáveis.
 
+### Disponível para gastar
+
+O DindIn adotará um único cálculo canônico. Ele representa quanto ainda pode ser consumido sem invadir dinheiro protegido nem ignorar compromissos conhecidos.
+
+Princípios já fechados:
+
+- saldo bancário não é disponibilidade;
+- limite de cartão não aumenta disponibilidade;
+- dinheiro sem destino não é automaticamente livre;
+- transferências entre contas próprias são neutras;
+- obrigações conhecidas continuam protegidas mesmo se forem esquecidas no orçamento;
+- pagamentos de obrigações já protegidas não reduzem o disponível duas vezes;
+- resultado negativo é permitido e deve ser explicado;
+- `Quero comprar` usa o mesmo motor de cálculo;
+- sem planejamento ativo não existe KPI canônico de disponível.
+
 ## Próxima etapa técnica
 
-Antes de gerar Drizzle ou migrations, validar a proposta de modelagem e seus invariantes.
+Antes de gerar migrations, fechar os refinamentos restantes da modelagem e então converter a proposta em schema implementável.
 
-Depois da aprovação:
+Sequência recomendada:
 
-1. converter entidades em schemas Drizzle;
-2. fechar constraints e índices;
-3. criar migrations M001–M007;
-4. criar schemas Zod;
-5. definir contratos OpenAPI;
-6. criar fixtures do caso piloto;
-7. criar testes das invariantes financeiras;
-8. implementar o primeiro vertical slice.
+1. incorporar os refinamentos do modelo canônico ao schema lógico;
+2. substituir ajustes opacos por realocações auditáveis de orçamento;
+3. fechar entidades, constraints e índices;
+4. converter entidades em schemas Drizzle;
+5. criar migrations M001–M007;
+6. criar schemas Zod;
+7. definir contratos OpenAPI;
+8. criar fixtures do caso piloto;
+9. criar testes das invariantes financeiras;
+10. implementar o primeiro vertical slice.
 
 A implementação deverá ocorrer por **vertical slices**, evitando construir banco, API e frontends como projetos isolados.
 
