@@ -128,7 +128,9 @@ export class DindinService {
       status: projection.status,
       fundingState: projection.fundingState,
       expectedIncomeMinor: projection.expectedIncomeMinor,
-      reconciledIncomeMinor: projection.reconciledIncomeMinor,
+      ...(projection.reconciledIncomeMinor === undefined
+        ? {}
+        : { reconciledIncomeMinor: projection.reconciledIncomeMinor }),
       unassignedCarryInMinor: projection.unassignedCarryInMinor,
       budgets: projection.budgets,
       unbudgetedPostedExpensesMinor: projection.unbudgetedPostedExpensesMinor,
