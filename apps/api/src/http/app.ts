@@ -1,6 +1,4 @@
 import {
-  ApiErrorSchema,
-  AvailableToSpendBreakdownSchema,
   CreateBudgetDefinitionSchema,
   CreateBudgetPeriodSchema,
   CreateCategorySchema,
@@ -8,48 +6,22 @@ import {
   CreateMonthlyPlanSchema,
   CreateProfileSchema,
   CreateTransactionSchema,
-  CreatedEntitySchema,
-  CreatedProfileSchema,
-  HealthResponseSchema,
   UuidSchema,
 } from "@dindin/contracts";
 import { DomainInvariantError } from "@dindin/domain";
-import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import type { Context } from "hono";
+import { Hono, type Context } from "hono";
 import { DindinService } from "../application/dindin-service";
 import { ApplicationError } from "../application/errors";
 import type { DindinStore } from "../ports/store";
+import { openApiDocument } from "./openapi";
 
-const jsonContent = <T>(schema: T) => ({
-  content: {
-    "application/json": { schema },
-  },
-});
+type SafeParseResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: { issues: unknown } };
 
-const commonErrorResponses = {
-  400: {
-    ...jsonContent(ApiErrorSchema),
-    description: "Invalid request or domain invariant",
-  },
-  401: {
-    ...jsonContent(ApiErrorSchema),
-    description: "Missing or invalid authentication context",
-  },
-  404: {
-    ...jsonContent(ApiErrorSchema),
-    description: "Resource not found",
-  },
-  409: {
-    ...jsonContent(ApiErrorSchema),
-    description: "Resource conflict",
-  },
-  500: {
-    ...jsonContent(ApiErrorSchema),
-    description: "Unexpected server error",
-  },
-} as const;
-
-const secured = [{ PilotUserId: [] }] as const;
+type SafeParseSchema<T> = {
+  safeParse(value: unknown): SafeParseResult<T>;
+};
 
 const requireUserId = (c: Context): string => {
   const parsed = UuidSchema.safeParse(c.req.header("x-dindin-user-id"));
@@ -58,6 +30,33 @@ const requireUserId = (c: Context): string => {
       "UNAUTHORIZED",
       "x-dindin-user-id must contain a valid user UUID during the pilot",
     );
+  }
+  return parsed.data;
+};
+
+async function parseJson<T>(c: Context, schema: SafeParseSchema<T>): Promise<T> {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    throw new ApplicationError("VALIDATION_ERROR", "request body must be valid JSON");
+  }
+
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    throw new ApplicationError(
+      "VALIDATION_ERROR",
+      "request validation failed",
+      parsed.error.issues,
+    );
+  }
+  return parsed.data;
+}
+
+const parseUuidParam = (value: string): string => {
+  const parsed = UuidSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new ApplicationError("VALIDATION_ERROR", "path parameter must be a valid UUID");
   }
   return parsed.data;
 };
@@ -82,26 +81,20 @@ const toErrorResponse = (
 
 export function createApiApp(store: DindinStore) {
   const service = new DindinService(store);
-  const app = new OpenAPIHono({
-    defaultHook: (result, c) => {
-      if (!result.success) {
-        return c.json(
-          toErrorResponse("VALIDATION_ERROR", "request validation failed", result.error.issues),
-          400,
-        );
-      }
-    },
-  });
+  const app = new Hono();
 
   app.onError((error, c) => {
     if (error instanceof ApplicationError) {
-      const status =
-        error.code === "UNAUTHORIZED"
-          ? 401
-          : error.code === "NOT_FOUND"
-            ? 404
-            : 409;
-      return c.json(toErrorResponse(error.code, error.message), status);
+      if (error.code === "VALIDATION_ERROR") {
+        return c.json(toErrorResponse(error.code, error.message, error.details), 400);
+      }
+      if (error.code === "UNAUTHORIZED") {
+        return c.json(toErrorResponse(error.code, error.message), 401);
+      }
+      if (error.code === "NOT_FOUND") {
+        return c.json(toErrorResponse(error.code, error.message), 404);
+      }
+      return c.json(toErrorResponse(error.code, error.message), 409);
     }
 
     if (error instanceof DomainInvariantError) {
@@ -114,194 +107,55 @@ export function createApiApp(store: DindinStore) {
     return c.json(toErrorResponse("INTERNAL_ERROR", "unexpected server error"), 500);
   });
 
-  const healthRoute = createRoute({
-    method: "get",
-    path: "/health",
-    responses: {
-      200: {
-        ...jsonContent(HealthResponseSchema),
-        description: "Service health",
-      },
-    },
-  });
+  app.get("/health", (c) => c.json({ status: "ok", service: "dindin-api" }, 200));
+  app.get("/openapi.json", (c) => c.json(openApiDocument, 200));
 
-  app.openapi(healthRoute, (c) =>
-    c.json({ status: "ok" as const, service: "dindin-api" as const }, 200),
-  );
-
-  const createProfileRoute = createRoute({
-    method: "post",
-    path: "/v1/profile",
-    security: secured,
-    request: {
-      body: {
-        content: {
-          "application/json": { schema: CreateProfileSchema },
-        },
-      },
-    },
-    responses: {
-      201: {
-        ...jsonContent(CreatedProfileSchema),
-        description: "Profile created",
-      },
-      ...commonErrorResponses,
-    },
-  });
-
-  app.openapi(createProfileRoute, async (c) => {
-    const result = await service.createProfile(requireUserId(c), c.req.valid("json"));
+  app.post("/v1/profile", async (c) => {
+    const input = await parseJson(c, CreateProfileSchema);
+    const result = await service.createProfile(requireUserId(c), input);
     return c.json(result, 201);
   });
 
-  const createAccountRoute = createRoute({
-    method: "post",
-    path: "/v1/accounts",
-    security: secured,
-    request: {
-      body: { content: { "application/json": { schema: CreateFinancialAccountSchema } } },
-    },
-    responses: {
-      201: { ...jsonContent(CreatedEntitySchema), description: "Financial account created" },
-      ...commonErrorResponses,
-    },
-  });
-
-  app.openapi(createAccountRoute, async (c) => {
-    const result = await service.createFinancialAccount(requireUserId(c), c.req.valid("json"));
+  app.post("/v1/accounts", async (c) => {
+    const input = await parseJson(c, CreateFinancialAccountSchema);
+    const result = await service.createFinancialAccount(requireUserId(c), input);
     return c.json(result, 201);
   });
 
-  const createCategoryRoute = createRoute({
-    method: "post",
-    path: "/v1/categories",
-    security: secured,
-    request: {
-      body: { content: { "application/json": { schema: CreateCategorySchema } } },
-    },
-    responses: {
-      201: { ...jsonContent(CreatedEntitySchema), description: "Category created" },
-      ...commonErrorResponses,
-    },
-  });
-
-  app.openapi(createCategoryRoute, async (c) => {
-    const result = await service.createCategory(requireUserId(c), c.req.valid("json"));
+  app.post("/v1/categories", async (c) => {
+    const input = await parseJson(c, CreateCategorySchema);
+    const result = await service.createCategory(requireUserId(c), input);
     return c.json(result, 201);
   });
 
-  const createMonthlyPlanRoute = createRoute({
-    method: "post",
-    path: "/v1/monthly-plans",
-    security: secured,
-    request: {
-      body: { content: { "application/json": { schema: CreateMonthlyPlanSchema } } },
-    },
-    responses: {
-      201: { ...jsonContent(CreatedEntitySchema), description: "Monthly plan created" },
-      ...commonErrorResponses,
-    },
-  });
-
-  app.openapi(createMonthlyPlanRoute, async (c) => {
-    const result = await service.createMonthlyPlan(requireUserId(c), c.req.valid("json"));
+  app.post("/v1/monthly-plans", async (c) => {
+    const input = await parseJson(c, CreateMonthlyPlanSchema);
+    const result = await service.createMonthlyPlan(requireUserId(c), input);
     return c.json(result, 201);
   });
 
-  const createBudgetDefinitionRoute = createRoute({
-    method: "post",
-    path: "/v1/budget-definitions",
-    security: secured,
-    request: {
-      body: { content: { "application/json": { schema: CreateBudgetDefinitionSchema } } },
-    },
-    responses: {
-      201: { ...jsonContent(CreatedEntitySchema), description: "Budget definition created" },
-      ...commonErrorResponses,
-    },
-  });
-
-  app.openapi(createBudgetDefinitionRoute, async (c) => {
-    const result = await service.createBudgetDefinition(requireUserId(c), c.req.valid("json"));
+  app.post("/v1/budget-definitions", async (c) => {
+    const input = await parseJson(c, CreateBudgetDefinitionSchema);
+    const result = await service.createBudgetDefinition(requireUserId(c), input);
     return c.json(result, 201);
   });
 
-  const createBudgetPeriodRoute = createRoute({
-    method: "post",
-    path: "/v1/budget-periods",
-    security: secured,
-    request: {
-      body: { content: { "application/json": { schema: CreateBudgetPeriodSchema } } },
-    },
-    responses: {
-      201: { ...jsonContent(CreatedEntitySchema), description: "Budget period created" },
-      ...commonErrorResponses,
-    },
-  });
-
-  app.openapi(createBudgetPeriodRoute, async (c) => {
-    const result = await service.createBudgetPeriod(requireUserId(c), c.req.valid("json"));
+  app.post("/v1/budget-periods", async (c) => {
+    const input = await parseJson(c, CreateBudgetPeriodSchema);
+    const result = await service.createBudgetPeriod(requireUserId(c), input);
     return c.json(result, 201);
   });
 
-  const createTransactionRoute = createRoute({
-    method: "post",
-    path: "/v1/transactions",
-    security: secured,
-    request: {
-      body: { content: { "application/json": { schema: CreateTransactionSchema } } },
-    },
-    responses: {
-      201: { ...jsonContent(CreatedEntitySchema), description: "Transaction posted" },
-      ...commonErrorResponses,
-    },
-  });
-
-  app.openapi(createTransactionRoute, async (c) => {
-    const result = await service.createTransaction(requireUserId(c), c.req.valid("json"));
+  app.post("/v1/transactions", async (c) => {
+    const input = await parseJson(c, CreateTransactionSchema);
+    const result = await service.createTransaction(requireUserId(c), input);
     return c.json(result, 201);
   });
 
-  const availableToSpendRoute = createRoute({
-    method: "get",
-    path: "/v1/monthly-plans/{monthlyPlanId}/available-to-spend",
-    security: secured,
-    request: {
-      params: z.object({ monthlyPlanId: UuidSchema }),
-    },
-    responses: {
-      200: {
-        ...jsonContent(AvailableToSpendBreakdownSchema),
-        description: "Canonical available-to-spend breakdown",
-      },
-      ...commonErrorResponses,
-    },
-  });
-
-  app.openapi(availableToSpendRoute, async (c) => {
-    const { monthlyPlanId } = c.req.valid("param");
+  app.get("/v1/monthly-plans/:monthlyPlanId/available-to-spend", async (c) => {
+    const monthlyPlanId = parseUuidParam(c.req.param("monthlyPlanId"));
     const result = await service.getAvailableToSpend(requireUserId(c), monthlyPlanId);
     return c.json(result, 200);
-  });
-
-  app.doc("/openapi.json", {
-    openapi: "3.1.0",
-    info: {
-      title: "DindIn API",
-      version: "0.1.0",
-      description: "API do primeiro vertical slice do DindIn.",
-    },
-    components: {
-      securitySchemes: {
-        PilotUserId: {
-          type: "apiKey",
-          in: "header",
-          name: "x-dindin-user-id",
-          description:
-            "Contexto temporário do piloto. Será substituído pelo adapter de autenticação antes de produção.",
-        },
-      },
-    },
   });
 
   return app;
