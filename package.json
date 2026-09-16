@@ -2,6 +2,9 @@
   "name": "dindin",
   "private": true,
   "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
@@ -12,6 +15,7 @@
     "db:migrate": "pnpm --filter @dindin/db db:migrate"
   },
   "devDependencies": {
+    "next": "latest",
     "turbo": "latest",
     "typescript": "latest"
   }

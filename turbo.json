@@ -3,7 +3,8 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**"]
+      "outputs": ["dist/**", ".next/**"],
+      "env": ["NEON_AUTH_BASE_URL", "NEON_AUTH_COOKIE_SECRET"]
     },
     "dev": {
       "cache": false,
