@@ -1,28 +1,40 @@
-# @dindin/web — Auth Dev Harness
+# @dindin/web
 
-Esta aplicação Next.js é, neste estágio, um harness técnico temporário para validar o Managed Better Auth do DindIn.
+Aplicação Web do DindIn em Next.js.
 
-Ela não representa a UI final do produto.
+A vertical slice atual implementa a experiência própria de autenticação do produto sobre o Managed Better Auth, mantendo sessão, cookies e JWT como detalhes internos.
 
-## Fluxo
+## Rotas de autenticação
 
 ```text
-Google OAuth (shared dev provider)
-→ Managed Better Auth
-→ sessão
-→ authClient.token()
-→ JWT presente
-→ DindIn API /v1/me (quando NEXT_PUBLIC_DINDIN_API_URL estiver configurada)
+/entrar
+/criar-conta
+/recuperar-senha
+/redefinir-senha
 ```
 
-O JWT não é renderizado na interface nem registrado em logs do app.
+Fluxo técnico:
+
+```text
+DindIn Web
+→ /api/auth/[...path]
+→ Managed Better Auth
+→ sessão / JWT
+→ IdentityProvider
+→ DindIn API
+```
+
+O usuário não recebe detalhes de JWT, JWKS, cookies, issuer, provider ou mensagens brutas da infraestrutura.
 
 ## Variáveis
 
-Copie `.env.example` para `.env.local` e preencha apenas localmente/na plataforma de deploy:
+Copie `.env.example` para `.env.local` e configure somente no ambiente local/plataforma de deploy:
 
 - `NEON_AUTH_BASE_URL`
 - `NEON_AUTH_COOKIE_SECRET`
-- `NEXT_PUBLIC_DINDIN_API_URL` (opcional até existir URL da API dev)
 
-Nunca versione cookie secret, tokens ou connection strings.
+Nunca versione cookie secret, tokens, credenciais OAuth ou connection strings.
+
+## OAuth Google
+
+No desenvolvimento pode ser utilizado o provider Google compartilhado do Managed Better Auth. Antes do beta público, o DindIn deve configurar credenciais OAuth próprias, domínio estável e callbacks de produção.

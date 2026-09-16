@@ -1,35 +1,29 @@
-import Link from "next/link";
-import { auth } from "../lib/auth/server";
+import { redirect } from "next/navigation";
+import { SignOutButton } from "../components/sign-out-button";
+import { getAuth } from "../lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const { data: session } = await auth.getSession();
+  const { data: session } = await getAuth().getSession();
+
+  if (!session?.user) {
+    redirect("/entrar");
+  }
+
+  const firstName = session.user.name?.trim().split(/\s+/)[0] || "você";
 
   return (
-    <main className="shell">
-      <section className="card">
-        <span className="eyebrow">DindIn · ambiente técnico</span>
-        <h1>Validação de autenticação</h1>
-        {session?.user ? (
-          <>
-            <p>
-              A sessão do Managed Better Auth está ativa. Use a tela de diagnóstico para validar a emissão do JWT sem expor o token na interface.
-            </p>
-            <div className="actions">
-              <Link className="button button-primary" href="/auth/debug">Abrir diagnóstico</Link>
-            </div>
-          </>
-        ) : (
-          <>
-            <p>
-              Esta página existe apenas durante a validação técnica. Ela não representa a tela final de login do produto.
-            </p>
-            <div className="actions">
-              <Link className="button button-primary" href="/auth/sign-in">Entrar com Google</Link>
-            </div>
-          </>
-        )}
+    <main className="home-shell">
+      <section className="home-card">
+        <span className="auth-eyebrow">Acesso concluído</span>
+        <h1>Que bom ter {firstName} por aqui.</h1>
+        <p>
+          Sua conta está conectada. A próxima etapa do DindIn vai transformar esse acesso em perfil e experiência financeira. Por enquanto, esta tela confirma apenas que você entrou com sucesso.
+        </p>
+        <div className="home-actions">
+          <SignOutButton />
+        </div>
       </section>
     </main>
   );
